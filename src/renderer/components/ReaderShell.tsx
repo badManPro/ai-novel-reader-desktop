@@ -7,6 +7,7 @@ import type {
   OfflineEngineActionResult,
   OfflineEngineConsoleSnapshot,
   OfflineEngineHealth,
+  OfflineManualImportResult,
   OfflineModelAssetManifest,
   OfflineModelTaskAction,
   OfflineModelTaskSnapshot,
@@ -79,6 +80,7 @@ export function ReaderShell() {
   const [offlineTasks, setOfflineTasks] = useState<OfflineModelTaskSnapshot[]>([]);
   const [offlineActionState, setOfflineActionState] = useState<Partial<Record<string, 'checking' | 'starting' | 'prepare' | 'download' | 'install'>>>({});
   const [offlineActionResults, setOfflineActionResults] = useState<Partial<Record<string, OfflineEngineActionResult>>>({});
+  const [offlineManualImportResults, setOfflineManualImportResults] = useState<Partial<Record<string, OfflineManualImportResult>>>({});
   const [selectedProviderId, setSelectedProviderId] = useState<string>(fallbackState.settings.defaultProviderId);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>(fallbackState.settings.defaultVoiceId);
   const [selectedSpeed, setSelectedSpeed] = useState<number>(fallbackState.settings.defaultSpeed);
@@ -257,6 +259,16 @@ export function ReaderShell() {
     } finally {
       setOfflineActionState((current) => ({ ...current, [providerId]: undefined }));
     }
+  }
+
+  async function chooseOfflineManualImport(providerId: 'cosyvoice-local' | 'gpt-sovits-local', target: 'repo-dir' | 'weights-dir') {
+    if (!api) {
+      return;
+    }
+
+    const result = await api.chooseOfflineManualImport(providerId, target);
+    setOfflineManualImportResults((current) => ({ ...current, [providerId]: result }));
+    await refreshOfflineStatus();
   }
 
   async function persistPatch(patch: Partial<ReaderPersistedState>) {
@@ -949,11 +961,13 @@ export function ReaderShell() {
                 manifests={offlineModelManifests}
                 actionState={offlineActionState}
                 actionResults={offlineActionResults}
+                manualImportResults={offlineManualImportResults}
                 onRefresh={refreshOfflineStatus}
                 onCheckEnv={(providerId) => runOfflineAction(providerId, 'checking')}
                 onStart={(providerId) => runOfflineAction(providerId, 'starting')}
                 onCreateTask={createOfflineTask}
                 onRetryTask={retryOfflineTask}
+                onChooseManualImport={chooseOfflineManualImport}
               />
             </section>
 

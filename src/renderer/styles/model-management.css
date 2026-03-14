@@ -141,7 +141,10 @@
 .task-list-card,
 .task-log-block,
 .task-filter-toolbar,
-.task-action-row {
+.task-action-row,
+.strategy-card,
+.manual-import-grid,
+.manual-import-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -229,6 +232,36 @@
   .task-card-header {
     flex-direction: column;
   }
+}
+
+.strategy-card {
+  border-top: 1px dashed var(--border);
+  padding-top: 14px;
+}
+
+.manual-import-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.manual-import-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.import-ready {
+  color: #9df5bf;
+  border-color: rgba(98, 218, 141, 0.35);
+  background: rgba(79, 209, 124, 0.12);
+}
+
+.import-missing {
+  color: #ffd58f;
+  border-color: rgba(255, 184, 77, 0.35);
+  background: rgba(255, 184, 77, 0.12);
 }
 
 .manifest-card,

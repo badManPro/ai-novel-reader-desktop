@@ -15,6 +15,7 @@ COSYVOICE_PYTHON="${COSYVOICE_PYTHON:-python3}"
 COSYVOICE_ENTRY="${COSYVOICE_ENTRY:-server.py}"
 COSYVOICE_MODEL_DIR="${COSYVOICE_MODEL_DIR:-}"
 COSYVOICE_EXTRA_ARGS="${COSYVOICE_EXTRA_ARGS:-}"
+COSYVOICE_SFT_MODEL_DIR="${COSYVOICE_SFT_MODEL_DIR:-}"
 
 fail() {
   echo "[cosyvoice] $1" >&2
@@ -48,14 +49,52 @@ if [[ ! -f "$COSYVOICE_ENTRY" ]]; then
   fail "入口脚本不存在：$COSYVOICE_MODEL_DIR/$COSYVOICE_ENTRY"
 fi
 
+DEFAULT_SFT_DIR="$COSYVOICE_MODEL_DIR/pretrained_models/CosyVoice-300M-SFT"
+EXTRA_ARGS_MODEL_DIR=""
+if [[ "$COSYVOICE_EXTRA_ARGS" =~ --model_dir(=|[[:space:]])([^[:space:]]+) ]]; then
+  EXTRA_ARGS_MODEL_DIR="${BASH_REMATCH[2]}"
+  EXTRA_ARGS_MODEL_DIR="${EXTRA_ARGS_MODEL_DIR%\"}"
+  EXTRA_ARGS_MODEL_DIR="${EXTRA_ARGS_MODEL_DIR#\"}"
+  EXTRA_ARGS_MODEL_DIR="${EXTRA_ARGS_MODEL_DIR%\'}"
+  EXTRA_ARGS_MODEL_DIR="${EXTRA_ARGS_MODEL_DIR#\'}"
+fi
+
+ACTIVE_MODEL_DIR="$DEFAULT_SFT_DIR"
+ACTIVE_MODEL_SOURCE="official-default"
+if [[ -n "$EXTRA_ARGS_MODEL_DIR" ]]; then
+  ACTIVE_MODEL_DIR="$EXTRA_ARGS_MODEL_DIR"
+  ACTIVE_MODEL_SOURCE="extra-args"
+fi
+if [[ -n "$COSYVOICE_SFT_MODEL_DIR" ]]; then
+  ACTIVE_MODEL_DIR="$COSYVOICE_SFT_MODEL_DIR"
+  ACTIVE_MODEL_SOURCE="manual-import"
+fi
+
+if is_placeholder_path "$ACTIVE_MODEL_DIR"; then
+  fail "CosyVoice SFT 生效目录仍是占位值，请设置 COSYVOICE_SFT_MODEL_DIR 或可用的 --model_dir。"
+fi
+
+if [[ ! -d "$ACTIVE_MODEL_DIR" ]]; then
+  fail "CosyVoice SFT 生效目录不存在：$ACTIVE_MODEL_DIR（source=$ACTIVE_MODEL_SOURCE）"
+fi
+
+SANITIZED_EXTRA_ARGS="$COSYVOICE_EXTRA_ARGS"
+if [[ -n "$EXTRA_ARGS_MODEL_DIR" ]]; then
+  SANITIZED_EXTRA_ARGS="$(printf '%s' "$SANITIZED_EXTRA_ARGS" | perl -0pe 's/--model_dir(?:=|\s+)(?:"[^"]+"|'"'"'[^'"'"']+'"'"'|\S+)//g')"
+fi
+
+FINAL_EXTRA_ARGS="--model_dir \"$ACTIVE_MODEL_DIR\" ${SANITIZED_EXTRA_ARGS}"
+
 echo "[cosyvoice] using env: $ENV_FILE"
 echo "[cosyvoice] python: $COSYVOICE_PYTHON"
 echo "[cosyvoice] cwd: $COSYVOICE_MODEL_DIR"
 echo "[cosyvoice] entry: $COSYVOICE_ENTRY"
 echo "[cosyvoice] listen: http://$COSYVOICE_HOST:$COSYVOICE_PORT"
+echo "[cosyvoice] active strategy: $ACTIVE_MODEL_SOURCE"
+echo "[cosyvoice] active model_dir: $ACTIVE_MODEL_DIR"
 
 if [[ "$COSYVOICE_ENTRY" == "runtime/python/fastapi/server.py" ]]; then
-  exec "$COSYVOICE_PYTHON" "$COSYVOICE_ENTRY" --port "$COSYVOICE_PORT" ${COSYVOICE_EXTRA_ARGS}
+  eval "exec \"$COSYVOICE_PYTHON\" \"$COSYVOICE_ENTRY\" --port \"$COSYVOICE_PORT\" $FINAL_EXTRA_ARGS"
 fi
 
-exec "$COSYVOICE_PYTHON" "$COSYVOICE_ENTRY" --host "$COSYVOICE_HOST" --port "$COSYVOICE_PORT" ${COSYVOICE_EXTRA_ARGS}
+eval "exec \"$COSYVOICE_PYTHON\" \"$COSYVOICE_ENTRY\" --host \"$COSYVOICE_HOST\" --port \"$COSYVOICE_PORT\" $FINAL_EXTRA_ARGS"

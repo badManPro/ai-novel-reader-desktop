@@ -2,6 +2,7 @@ import { app } from 'electron';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import path from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
 import type {
   OfflineEngineId,
@@ -401,15 +402,75 @@ export class OfflineModelTaskService {
   }
 }
 
+function readEnvFileSync(filePath: string) {
+  try {
+    const content = readFileSync(filePath, 'utf8');
+    return Object.fromEntries(
+      content
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('#') && line.includes('='))
+        .map((line) => {
+          const index = line.indexOf('=');
+          const key = line.slice(0, index).trim();
+          let value = line.slice(index + 1).trim();
+          if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+          }
+          return [key, value];
+        })
+    );
+  } catch {
+    return {} as Record<string, string>;
+  }
+}
+
+function extractModelDirFromExtraArgs(extraArgs?: string) {
+  if (!extraArgs) {
+    return undefined;
+  }
+  const match = extraArgs.match(/--model_dir(?:=|\s+)(?:"([^"]+)"|'([^']+)'|(\S+))/);
+  return match?.[1] ?? match?.[2] ?? match?.[3];
+}
+
+function applyCosyVoiceAssetResolution(assets: OfflineModelAssetItem[], envVars: Record<string, string>) {
+  const repoDir = envVars.COSYVOICE_MODEL_DIR;
+  const activeSftDir = envVars.COSYVOICE_SFT_MODEL_DIR
+    || extractModelDirFromExtraArgs(envVars.COSYVOICE_EXTRA_ARGS)
+    || (repoDir ? path.join(repoDir, 'pretrained_models', 'CosyVoice-300M-SFT') : undefined);
+
+  if (!activeSftDir) {
+    return assets;
+  }
+
+  return assets.map((asset) => {
+    if (asset.id !== 'cosyvoice-model-sft') {
+      return asset;
+    }
+    const nextTargetPath = activeSftDir;
+    return {
+      ...asset,
+      targetPath: nextTargetPath,
+      installHint: `${asset.installHint ?? ''} 当前任务校验会优先采用：${nextTargetPath}`.trim(),
+      fileChecks: asset.fileChecks?.map((check) => ({
+        ...check,
+        path: check.path.replace(/\$\{COSYVOICE_MODEL_DIR\}\/pretrained_models\/CosyVoice-300M-SFT/g, nextTargetPath)
+      }))
+    };
+  });
+}
+
 export function buildOfflineModelTask(providerId: OfflineEngineId, action: OfflineModelTaskAction): BuiltTaskTemplate {
   const manifest = getOfflineModelAssetManifest(providerId);
   const template = getOfflineModelTaskTemplate(providerId, action);
   const runtime = getOfflineTaskRuntimePaths(providerId);
-
-  const assets = manifest.assets;
+  const envFile = runtime.envFile;
+  const envVars = readEnvFileSync(envFile);
+  const assets = providerId === 'cosyvoice-local'
+    ? applyCosyVoiceAssetResolution(manifest.assets, envVars)
+    : manifest.assets;
   const label = providerId === 'cosyvoice-local' ? 'CosyVoice' : 'GPT-SoVITS';
   const envVar = providerId === 'cosyvoice-local' ? 'COSYVOICE_MODEL_DIR' : 'GPTSOVITS_MODEL_DIR';
-  const envFile = runtime.envFile;
   const exampleEnv = providerId === 'cosyvoice-local'
     ? path.join(runtime.scriptsDir, 'cosyvoice.env.example')
     : path.join(runtime.scriptsDir, 'gpt-sovits.env.example');
@@ -420,6 +481,7 @@ export function buildOfflineModelTask(providerId: OfflineEngineId, action: Offli
     `echo "task template: ${template.templateId}"`,
     `echo "asset manifest: ${manifest.manifestId}"`,
     `echo "engine: ${label}"`,
+    providerId === 'cosyvoice-local' ? 'echo "source strategy: official-first (mirror/manual-import as fallback)"' : 'echo "source strategy: repo-first"',
     `echo "resource count: ${assets.length} (required ${assets.filter((asset) => asset.required).length})"`
   ];
 
@@ -481,6 +543,7 @@ function buildDownloadCommands(providerId: OfflineEngineId, template: OfflineMod
   const downloaderModulePath = path.join(__dirname, 'offline-model-downloader.js');
   return [
     `echo "download summary: ${template.summary}"`,
+    providerId === 'cosyvoice-local' ? 'echo "download policy: 官方仓库 / 官方权重页优先，镜像与手动导入仅作兜底"' : 'echo "download policy: official/community repo first"',
     `set -a && source ${shellQuote(envFile)} && set +a`,
     `MODEL_DIR="${'$'}${envVar}"`,
     `if [ -z "${'$'}MODEL_DIR" ]; then echo "missing ${envVar}" >&2; exit 1; fi`,

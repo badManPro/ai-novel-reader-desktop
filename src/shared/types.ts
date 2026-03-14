@@ -26,6 +26,8 @@ export type OfflineModelTaskStatus = 'queued' | 'running' | 'succeeded' | 'faile
 export type OfflineModelTaskStage = 'queued' | 'preparing' | 'downloading' | 'installing' | 'verifying' | 'completed' | 'failed';
 export type OfflineModelAssetSourceType = 'git' | 'huggingface' | 'modelscope' | 'http' | 'local-file';
 export type OfflineModelAssetCategory = 'repository' | 'entry' | 'weights' | 'config' | 'reference-audio';
+export type OfflineModelSourcePriority = 'primary' | 'mirror' | 'fallback';
+export type OfflineManualImportTarget = 'repo-dir' | 'weights-dir';
 
 export interface Chapter {
   id: string;
@@ -278,6 +280,7 @@ export interface OfflineEngineConsoleSnapshot {
   health: OfflineEngineHealth;
   serviceStatus?: OfflineServiceStatus;
   envCheck?: OfflineEngineEnvCheckResult;
+  manualImport?: OfflineManualImportState;
 }
 
 export type OfflineModelAssetVerificationStatus = 'pending' | 'missing' | 'exists-unverified' | 'checksum-passed' | 'checksum-failed' | 'not-applicable';
@@ -287,6 +290,46 @@ export interface OfflineModelAssetSource {
   url: string;
   note?: string;
   checksumSha256?: string;
+  priority?: OfflineModelSourcePriority;
+  isOfficial?: boolean;
+  recommended?: boolean;
+  label?: string;
+}
+
+export interface OfflineManualImportItem {
+  target: OfflineManualImportTarget;
+  label: string;
+  envKey: string;
+  selectedPath?: string;
+  exists: boolean;
+  source: 'env' | 'manual-import' | 'derived' | 'unset';
+  sourceLabel?: string;
+  hint: string;
+}
+
+export interface OfflineActiveStrategySummary {
+  strategyId: 'official' | 'mirror' | 'manual-import' | 'unset';
+  strategyLabel: string;
+  effectiveSource: string;
+  effectivePath?: string;
+  detail: string;
+}
+
+export interface OfflineManualImportState {
+  providerId: OfflineEngineId;
+  items: OfflineManualImportItem[];
+  checkedAt: string;
+  activeStrategy?: OfflineActiveStrategySummary;
+}
+
+export interface OfflineManualImportResult {
+  ok: boolean;
+  cancelled?: boolean;
+  providerId: OfflineEngineId;
+  target: OfflineManualImportTarget;
+  summary: string;
+  detail?: string;
+  state: OfflineManualImportState;
 }
 
 export interface OfflineModelAssetFileCheck {
@@ -432,6 +475,8 @@ export interface NovelReaderApi extends AppMetadata {
   getOfflineServiceStatus: () => Promise<OfflineServiceStatus[]>;
   getOfflineEngineConsole: () => Promise<OfflineEngineConsoleSnapshot[]>;
   getOfflineModelAssetManifests: () => Promise<OfflineModelAssetManifest[]>;
+  getOfflineManualImportState: (providerId: OfflineEngineId) => Promise<OfflineManualImportState>;
+  chooseOfflineManualImport: (providerId: OfflineEngineId, target: OfflineManualImportTarget) => Promise<OfflineManualImportResult>;
   checkOfflineEngineEnv: (providerId: OfflineEngineId) => Promise<OfflineEngineActionResult>;
   startOfflineEngine: (providerId: OfflineEngineId) => Promise<OfflineEngineActionResult>;
   listOfflineModelTasks: () => Promise<OfflineModelTaskSnapshot[]>;

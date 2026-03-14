@@ -13,12 +13,25 @@ const projectRoot = path.resolve(__dirname, '../../..');
 const scriptsDir = path.join(projectRoot, 'scripts/offline-tts');
 const tmpTaskDir = path.join(projectRoot, '.tmp-model-tasks');
 
-function createSource(url: string, type: OfflineModelAssetSource['type'], note?: string, checksumSha256?: string): OfflineModelAssetSource {
+function createSource(
+  url: string,
+  type: OfflineModelAssetSource['type'],
+  note?: string,
+  checksumSha256?: string,
+  priority: OfflineModelAssetSource['priority'] = 'fallback',
+  isOfficial = false,
+  recommended = false,
+  label?: string
+): OfflineModelAssetSource {
   return {
     type,
     url,
     note,
-    checksumSha256
+    checksumSha256,
+    priority,
+    isOfficial,
+    recommended,
+    label
   };
 }
 
@@ -52,7 +65,7 @@ export const offlineModelAssetManifests: Record<OfflineEngineId, OfflineModelAss
     providerId: 'cosyvoice-local',
     engineName: 'CosyVoice 300M SFT Local',
     version: '2026-03-14',
-    summary: '主朗读链路：官方 CosyVoice 仓库 + FastAPI 入口 + CosyVoice-300M-SFT 权重目录。',
+    summary: '主朗读链路：优先走官方 CosyVoice 仓库 / 官方 FastAPI 入口 / 官方 ModelScope SFT 权重；HuggingFace 仅作镜像兜底，页面支持手动导入目录承接。',
     assets: [
       {
         id: 'cosyvoice-repo',
@@ -63,7 +76,7 @@ export const offlineModelAssetManifests: Record<OfflineEngineId, OfflineModelAss
         envKey: 'COSYVOICE_MODEL_DIR',
         targetPath: '${COSYVOICE_MODEL_DIR}',
         installHint: '若目录不存在，可先 git clone 官方仓库；若已存在则执行 git pull --ff-only。',
-        sources: [createSource('https://github.com/FunAudioLLM/CosyVoice.git', 'git', '官方仓库')],
+        sources: [createSource('https://github.com/FunAudioLLM/CosyVoice.git', 'git', '官方仓库', undefined, 'primary', true, true, '官方优先')],
         fileChecks: [
           createFileCheck('repo-git-dir', '.git 目录', '${COSYVOICE_MODEL_DIR}/.git', true),
           createFileCheck('repo-readme', 'README', '${COSYVOICE_MODEL_DIR}/README.md', false)
@@ -77,7 +90,7 @@ export const offlineModelAssetManifests: Record<OfflineEngineId, OfflineModelAss
         required: true,
         targetPath: '${COSYVOICE_MODEL_DIR}/runtime/python/fastapi/server.py',
         installHint: '当前项目默认使用官方 FastAPI 入口。',
-        sources: [createSource('https://github.com/FunAudioLLM/CosyVoice/blob/main/runtime/python/fastapi/server.py', 'http', '入口文件参考')],
+        sources: [createSource('https://github.com/FunAudioLLM/CosyVoice/blob/main/runtime/python/fastapi/server.py', 'http', '入口文件参考', undefined, 'primary', true, true, '官方优先')],
         fileChecks: [
           createFileCheck(
             'server-py',
@@ -97,10 +110,10 @@ export const offlineModelAssetManifests: Record<OfflineEngineId, OfflineModelAss
         category: 'weights',
         required: true,
         targetPath: '${COSYVOICE_MODEL_DIR}/pretrained_models/CosyVoice-300M-SFT',
-        installHint: '需补齐官方 SFT 权重、配置与 tokenizer 文件。',
+        installHint: '优先使用官方 ModelScope 页面；若网络受限可退回 HuggingFace 镜像，或手动导入已下载好的 SFT 权重目录。',
         sources: [
-          createSource('https://www.modelscope.cn/models/iic/CosyVoice-300M-SFT', 'modelscope', '官方权重页面'),
-          createSource('https://huggingface.co/FunAudioLLM/CosyVoice-300M-SFT', 'huggingface', '镜像来源，便于外网下载')
+          createSource('https://www.modelscope.cn/models/iic/CosyVoice-300M-SFT', 'modelscope', '官方权重页面', undefined, 'primary', true, true, '官方优先'),
+          createSource('https://huggingface.co/FunAudioLLM/CosyVoice-300M-SFT', 'huggingface', '镜像来源，便于外网下载', undefined, 'mirror', false, false, '镜像兜底')
         ],
         fileChecks: [
           createFileCheck('sft-config', 'cosyvoice.yaml', '${COSYVOICE_MODEL_DIR}/pretrained_models/CosyVoice-300M-SFT/cosyvoice.yaml', true, undefined, '可通过直链自动下载；建议补固定版本 sha256', undefined, 'COSYVOICE_SFT_CONFIG_URL'),
@@ -118,8 +131,8 @@ export const offlineModelAssetManifests: Record<OfflineEngineId, OfflineModelAss
         targetPath: '${COSYVOICE_MODEL_DIR}/pretrained_models/CosyVoice-300M',
         installHint: '建议保留基础版权重用于回退。',
         sources: [
-          createSource('https://www.modelscope.cn/models/iic/CosyVoice-300M', 'modelscope', '官方基础权重页面'),
-          createSource('https://huggingface.co/FunAudioLLM/CosyVoice-300M', 'huggingface', '镜像来源')
+          createSource('https://www.modelscope.cn/models/iic/CosyVoice-300M', 'modelscope', '官方基础权重页面', undefined, 'primary', true, true, '官方优先'),
+          createSource('https://huggingface.co/FunAudioLLM/CosyVoice-300M', 'huggingface', '镜像来源', undefined, 'mirror', false, false, '镜像兜底')
         ],
         fileChecks: [
           createFileCheck('base-config', 'cosyvoice.yaml', '${COSYVOICE_MODEL_DIR}/pretrained_models/CosyVoice-300M/cosyvoice.yaml', false),
@@ -275,7 +288,7 @@ export const offlineModelTaskTemplates: Record<OfflineEngineId, Record<OfflineMo
       providerId: 'cosyvoice-local',
       action: 'download',
       title: 'CosyVoice · 下载任务',
-      summary: '围绕仓库、SFT 权重与 env 生成明确下载清单，并回填文件级校验视图。',
+      summary: '围绕官方仓库、官方 SFT 权重与 env 生成明确下载清单；镜像来源仅作为兜底，并回填文件级校验视图。',
       stageLabels: {
         preparing: '装载环境',
         downloading: '拉取仓库/梳理权重',
@@ -289,7 +302,7 @@ export const offlineModelTaskTemplates: Record<OfflineEngineId, Record<OfflineMo
       providerId: 'cosyvoice-local',
       action: 'install',
       title: 'CosyVoice · 安装任务',
-      summary: '按主路线检查 Python、入口脚本与 SFT model_dir，产出可执行安装前提与校验状态。',
+      summary: '按 CosyVoice 官方主路线检查 Python、入口脚本与 SFT model_dir；若已手动导入目录，也会在校验结果中承接显示。',
       stageLabels: {
         preparing: '装载环境',
         installing: '检查运行时',

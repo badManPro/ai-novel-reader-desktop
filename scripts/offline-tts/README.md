@@ -24,7 +24,8 @@ scripts/offline-tts/start-cosyvoice.sh
 
 默认配置说明：
 - `COSYVOICE_MODEL_DIR` 填的是 **CosyVoice 仓库根目录**
-- 真正的模型路径通过 `COSYVOICE_EXTRA_ARGS` 中的 `--model_dir ...` 传入
+- CosyVoice SFT 生效目录优先级现为：`COSYVOICE_SFT_MODEL_DIR`（手动导入） > `COSYVOICE_EXTRA_ARGS` 中显式 `--model_dir ...` > 仓库内默认 `pretrained_models/CosyVoice-300M-SFT`
+- 启动脚本与模型任务校验都会按上面这套优先级执行，不再只是页面展示
 - 当前脚本已兼容官方 FastAPI 入口 `runtime/python/fastapi/server.py`
 - 注意 `COSYVOICE_EXTRA_ARGS` 若包含空格，需整体加引号，例如：`'--model_dir /absolute/path/to/CosyVoice/pretrained_models/CosyVoice-300M'`
 

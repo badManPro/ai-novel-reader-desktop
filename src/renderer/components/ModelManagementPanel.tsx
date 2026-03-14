@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type {
   OfflineEngineActionResult,
   OfflineEngineConsoleSnapshot,
+  OfflineManualImportResult,
   OfflineModelAssetManifest,
   OfflineModelTaskAction,
   OfflineModelTaskSnapshot
@@ -13,11 +14,13 @@ interface ModelManagementPanelProps {
   tasks: OfflineModelTaskSnapshot[];
   actionState: Partial<Record<string, 'checking' | 'starting' | 'prepare' | 'download' | 'install'>>;
   actionResults: Partial<Record<string, OfflineEngineActionResult>>;
+  manualImportResults: Partial<Record<string, OfflineManualImportResult>>;
   onRefresh: () => void | Promise<void>;
   onCheckEnv: (providerId: 'cosyvoice-local' | 'gpt-sovits-local') => void | Promise<void>;
   onStart: (providerId: 'cosyvoice-local' | 'gpt-sovits-local') => void | Promise<void>;
   onCreateTask: (providerId: 'cosyvoice-local' | 'gpt-sovits-local', action: OfflineModelTaskAction) => void | Promise<void>;
   onRetryTask: (taskId: string, providerId: 'cosyvoice-local' | 'gpt-sovits-local') => void | Promise<void>;
+  onChooseManualImport: (providerId: 'cosyvoice-local' | 'gpt-sovits-local', target: 'repo-dir' | 'weights-dir') => void | Promise<void>;
 }
 
 type TaskFilter = 'all' | 'failed' | 'running' | 'recent';
@@ -34,11 +37,13 @@ export function ModelManagementPanel({
   tasks,
   actionState,
   actionResults,
+  manualImportResults,
   onRefresh,
   onCheckEnv,
   onStart,
   onCreateTask,
-  onRetryTask
+  onRetryTask,
+  onChooseManualImport
 }: ModelManagementPanelProps) {
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
   const taskMetrics = useMemo(() => ({
@@ -77,6 +82,7 @@ export function ModelManagementPanel({
         {engines.map((engine) => {
           const manifest = manifests.find((item) => item.providerId === engine.providerId);
           const result = actionResults[engine.providerId];
+          const manualImportResult = manualImportResults[engine.providerId];
           const runningAction = actionState[engine.providerId];
           const filteredTasks = filterTasks(tasks.filter((task) => task.providerId === engine.providerId), taskFilter).slice(0, taskFilter === 'all' ? 6 : 8);
           const failedCount = tasks.filter((task) => task.providerId === engine.providerId && task.status === 'failed').length;
@@ -125,6 +131,48 @@ export function ModelManagementPanel({
                 </button>
               </div>
 
+              {engine.providerId === 'cosyvoice-local' ? (
+                <div className="strategy-card">
+                  <div className="task-list-header">
+                    <div>
+                      <strong>CosyVoice 推荐策略</strong>
+                      <p className="muted">官方仓库 + 官方 FastAPI + 官方 ModelScope SFT 权重优先；HuggingFace 与手动导入仅作兜底，不直接宣称完整自动安装。</p>
+                    </div>
+                    <span className="badge-pill badge-primary">官方优先</span>
+                  </div>
+                  <div className="model-engine-meta-grid task-meta-grid" style={{ marginBottom: 12 }}>
+                    <MetaItem label="当前采用策略" value={engine.manualImport?.activeStrategy?.strategyLabel ?? '未配置'} />
+                    <MetaItem label="当前生效来源" value={engine.manualImport?.activeStrategy?.effectiveSource ?? '未配置'} />
+                    <MetaItem label="当前生效路径" value={engine.manualImport?.activeStrategy?.effectivePath ?? '未解析'} />
+                    <MetaItem label="策略说明" value={engine.manualImport?.activeStrategy?.detail ?? '尚未形成策略'} />
+                  </div>
+                  <div className="manual-import-grid">
+                    {(engine.manualImport?.items ?? []).map((item) => (
+                      <article key={`${engine.providerId}-${item.target}`} className="manual-import-card">
+                        <div className="task-card-header">
+                          <div>
+                            <strong>{item.label}</strong>
+                            <p className="muted">{item.hint}</p>
+                          </div>
+                          <span className={`badge-pill import-${item.exists ? 'ready' : 'missing'}`}>{item.exists ? '已承接' : '待导入'}</span>
+                        </div>
+                        <div className="model-engine-meta-grid task-meta-grid">
+                          <MetaItem label="配置键" value={item.envKey} />
+                          <MetaItem label="来源" value={item.sourceLabel ?? item.source} />
+                          <MetaItem label="当前路径" value={item.selectedPath ?? '未配置'} />
+                          <MetaItem label="状态" value={item.exists ? '路径可用' : '尚未落位'} />
+                        </div>
+                        <div className="task-action-row">
+                          <button type="button" className="secondary" onClick={() => void onChooseManualImport(engine.providerId, item.target)} disabled={Boolean(runningAction)}>
+                            {item.target === 'repo-dir' ? '手动导入仓库目录' : '手动导入权重目录'}
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="deployment-task-toolbar">
                 {(['prepare', 'download', 'install'] as OfflineModelTaskAction[]).map((taskAction) => (
                   <button key={taskAction} type="button" className="secondary" onClick={() => void onCreateTask(engine.providerId, taskAction)} disabled={Boolean(runningAction)}>
@@ -139,6 +187,15 @@ export function ModelManagementPanel({
                   <p>{result.summary}</p>
                   {result.detail ? <pre>{result.detail}</pre> : null}
                   <small className="muted">{formatDateTime(result.checkedAt)}</small>
+                </div>
+              ) : null}
+
+              {manualImportResult?.providerId === engine.providerId ? (
+                <div className={`action-result-card ${manualImportResult.ok ? 'ok' : 'error'}`}>
+                  <strong>{manualImportResult.cancelled ? '已取消手动导入' : '手动导入结果'}</strong>
+                  <p>{manualImportResult.summary}</p>
+                  {manualImportResult.detail ? <pre>{manualImportResult.detail}</pre> : null}
+                  <small className="muted">{formatDateTime(manualImportResult.state.checkedAt)}</small>
                 </div>
               ) : null}
 
@@ -246,7 +303,7 @@ function ManifestCard({ manifest }: { manifest?: OfflineModelAssetManifest }) {
                     asset.envKey ? `环境变量: ${asset.envKey}` : null,
                     asset.installHint ? `安装提示: ${asset.installHint}` : null,
                     '来源:',
-                    ...asset.sources.map((source) => `- [${source.type}] ${source.url}${source.note ? ` (${source.note})` : ''}${source.checksumSha256 ? ` | sha256=${source.checksumSha256}` : ''}`),
+                    ...asset.sources.map((source) => `- [${source.type}] ${source.url}${source.label ? ` | ${source.label}` : ''}${source.priority ? ` | priority=${source.priority}` : ''}${source.isOfficial ? ' | official=yes' : ''}${source.recommended ? ' | recommended=yes' : ''}${source.note ? ` (${source.note})` : ''}${source.checksumSha256 ? ` | sha256=${source.checksumSha256}` : ''}`),
                     '文件级校验:',
                     ...(asset.fileChecks?.map((check) => `- ${check.label} -> ${check.path} | ${check.required ? 'required' : 'optional'} | ${check.checksumSha256 ? `sha256=${check.checksumSha256}` : 'sha256=missing'}${check.note ? ` | ${check.note}` : ''}`) ?? ['- 暂无'])
                   ].filter(Boolean).join('\n')}</pre>

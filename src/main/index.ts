@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 import type { DeleteBookResult, ReaderPersistedState, TtsSpeakRequest, TtsSpeakResult } from '../shared/types';
 import { BookImportService } from './services/book-import-service';
@@ -61,6 +61,11 @@ function registerIpcHandlers() {
   ipcMain.handle('tts:offline-health', async () => ttsCatalogService.getOfflineEngineHealth());
   ipcMain.handle('tts:offline-service-status', async () => ttsCatalogService.getOfflineServiceStatus());
   ipcMain.handle('tts:offline-console', async () => offlineTtsConsoleService.getSnapshot());
+  ipcMain.handle('tts:offline-manual-import-state', async (_event, providerId: 'cosyvoice-local' | 'gpt-sovits-local') => offlineTtsConsoleService.getManualImportState(providerId));
+  ipcMain.handle('tts:offline-manual-import-choose', async (_event, providerId: 'cosyvoice-local' | 'gpt-sovits-local', target: 'repo-dir' | 'weights-dir') => {
+    const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    return offlineTtsConsoleService.chooseManualImport(providerId, target, async (options) => dialog.showOpenDialog(window ?? undefined, options));
+  });
   ipcMain.handle('tts:offline-check-env', async (_event, providerId: 'cosyvoice-local' | 'gpt-sovits-local') => offlineTtsConsoleService.checkEnvironment(providerId));
   ipcMain.handle('tts:offline-start', async (_event, providerId: 'cosyvoice-local' | 'gpt-sovits-local') => offlineTtsConsoleService.startEngine(providerId));
   ipcMain.handle('tts:offline-model-tasks', async () => offlineModelTaskService.listTasks());
