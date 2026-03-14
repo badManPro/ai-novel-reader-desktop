@@ -1,0 +1,17 @@
+appId: com.openclaw.ai-novel-reader
+productName: AI Novel Reader
+files:
+  - dist/**/*
+  - package.json
+directories:
+  buildResources: build
+mac:
+  category: public.app-category.books
+  target:
+    - dmg
+win:
+  target:
+    - nsis
+linux:
+  target:
+    - AppImage

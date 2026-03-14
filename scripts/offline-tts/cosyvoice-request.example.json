@@ -1,0 +1,17 @@
+{
+  "tts_text": "这是 AI Novel Reader 发给 CosyVoice SFT 的标准请求示例。",
+  "spk_id": "中文女",
+  "text": "这是 AI Novel Reader 发给 CosyVoice SFT 的标准请求示例。",
+  "voice": "中文女",
+  "voice_id": "中文女",
+  "speaker": "中文女",
+  "speed": 1,
+  "speed_factor": 1,
+  "chapter_id": "chapter-001",
+  "chapter_title": "第一章",
+  "book_id": "book-demo",
+  "provider_id": "cosyvoice-local",
+  "stream": false,
+  "format": "wav",
+  "_note": "官方 FastAPI /inference_sft 实际需要 multipart/form-data，其中核心字段是 tts_text + spk_id。桌面端现已按该主链路发请求。"
+}

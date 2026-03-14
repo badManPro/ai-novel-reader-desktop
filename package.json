@@ -1,0 +1,48 @@
+{
+  "name": "ai-novel-reader-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI 读小说桌面客户端一期骨架，基于 Electron + React + TypeScript。",
+  "main": "dist/main/main/index.js",
+  "author": "OpenClaw",
+  "license": "MIT",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:main\" \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:main": "tsc -p tsconfig.main.json --watch",
+    "dev:renderer": "vite",
+    "dev:electron": "wait-on tcp:5173 file:dist/main/main/index.js && cross-env NODE_ENV=development electron .",
+    "build": "npm run clean && npm run build:main && npm run build:renderer",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.main.json --noEmit",
+    "test": "npm run build:main && node --test dist/main/test/**/*.test.js",
+    "lint": "eslint . --ext .ts,.tsx",
+    "clean": "rimraf dist out",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sql.js": "^1.14.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/sql.js": "^1.4.9",
+    "@typescript-eslint/eslint-plugin": "^8.30.1",
+    "@typescript-eslint/parser": "^8.30.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "cross-env": "^10.0.0",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "eslint": "^9.25.1",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "wait-on": "^8.0.3"
+  }
+}

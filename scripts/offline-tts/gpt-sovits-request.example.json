@@ -1,0 +1,18 @@
+{
+  "text": "这是 AI Novel Reader 发给 GPT-SoVITS 的标准请求示例。",
+  "voice": "gpt-sovits-default",
+  "voice_id": "gpt-sovits-default",
+  "speed": 1,
+  "speed_factor": 1,
+  "chapter_id": "chapter-001",
+  "chapter_title": "第一章",
+  "book_id": "book-demo",
+  "provider_id": "gpt-sovits-local",
+  "text_lang": "zh",
+  "prompt_lang": "zh",
+  "ref_audio_path": "/absolute/path/to/ref.wav",
+  "prompt_text": "参考音频文本",
+  "top_k": 5,
+  "top_p": 1,
+  "temperature": 1
+}
