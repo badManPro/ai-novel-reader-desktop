@@ -239,6 +239,65 @@
   padding: 24px;
 }
 
+.settings-route-panel-enhanced,
+.settings-page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.enhanced-settings-nav .settings-route-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.enhanced-settings-nav .settings-route-tab small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.settings-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.settings-metric-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-accent) 88%, white 12%);
+}
+
+.settings-metric-card p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.settings-cleanup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-cleanup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-accent) 84%, white 16%);
+}
+
+.settings-cleanup-item p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
 .library-page {
   gap: 24px;
 }
@@ -719,6 +778,7 @@
 
   .player-dock-metrics,
   .player-dock-debug-grid,
+  .settings-metric-grid,
   .immersive-reader-layout,
   .book-detail-grid,
   .book-meta-grid,
@@ -740,7 +800,8 @@
   .immersive-reader-header,
   .reader-drawer-header,
   .player-dock-main,
-  .player-dock-primary {
+  .player-dock-primary,
+  .settings-cleanup-item {
     flex-direction: column;
   }
 

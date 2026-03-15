@@ -13,7 +13,7 @@ function getPageMeta(pathname: string) {
     return {
       eyebrow: 'Settings',
       title: '设置中心',
-      description: 'Step 1 先建立设置路由骨架，Step 6 再拆成朗读、阅读、离线、数据和关于五个子页。'
+      description: '朗读、阅读、离线、数据与关于已拆成独立子页，常用设置与高级能力不再混在一个大面板里。'
     };
   }
 
@@ -34,7 +34,7 @@ export function AppShell() {
         <div className="app-shell-brand">
           <p className="app-shell-kicker">AI Novel Reader</p>
           <h1>Consumer Refactor</h1>
-          <p className="app-shell-caption">书库已经切入真实数据流，旧阅读工作台暂由 `ReaderShell` 过渡承接。</p>
+          <p className="app-shell-caption">书库、详情、阅读和设置都已切到新页面结构，旧 `ReaderShell` 仅作为过渡工作台保留。</p>
         </div>
 
         <nav className="app-shell-nav" aria-label="主导航">

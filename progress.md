@@ -80,6 +80,28 @@
   - `src/renderer/styles/app-shell.css` (updated)
   - `src/renderer/components/reader/ReaderPlaybackPanel.tsx` (deleted)
 
+### Step 6: 设置中心拆分
+- **Status:** complete
+- Actions taken:
+  - 新增 `src/renderer/components/settings/SettingsLayout.tsx`、`src/renderer/hooks/useSettingsState.ts` 与 `src/renderer/pages/settings/useSettingsOutlet.ts`，让设置中心通过统一状态层和 `Outlet context` 向五个子页分发数据。
+  - 将 `src/renderer/pages/settings/TtsSettingsPage.tsx` 接入默认 Provider、音色、倍速和试听能力。
+  - 将 `src/renderer/pages/settings/ReadingSettingsPage.tsx` 接入字号、行高和主题设置。
+  - 将 `src/renderer/pages/settings/OfflineSettingsPage.tsx` 接入离线健康概览，并迁入 `ModelManagementPanel`。
+  - 将 `src/renderer/pages/settings/DataSettingsPage.tsx` 接入缓存指标、草稿队列和按书清理缓存能力。
+  - 将 `src/renderer/pages/settings/AboutSettingsPage.tsx` 接入应用版本、支持格式和产品说明，并更新 `SettingsPage`、`AppShell` 和样式。
+- Files created/modified:
+  - `src/renderer/components/settings/SettingsLayout.tsx` (created)
+  - `src/renderer/hooks/useSettingsState.ts` (created)
+  - `src/renderer/pages/settings/useSettingsOutlet.ts` (created)
+  - `src/renderer/pages/settings/SettingsPage.tsx` (updated)
+  - `src/renderer/pages/settings/TtsSettingsPage.tsx` (updated)
+  - `src/renderer/pages/settings/ReadingSettingsPage.tsx` (updated)
+  - `src/renderer/pages/settings/OfflineSettingsPage.tsx` (updated)
+  - `src/renderer/pages/settings/DataSettingsPage.tsx` (updated)
+  - `src/renderer/pages/settings/AboutSettingsPage.tsx` (updated)
+  - `src/renderer/app/AppShell.tsx` (updated)
+  - `src/renderer/styles/app-shell.css` (updated)
+
 ### Phase 1: Requirements & Discovery
 - **Status:** complete
 - **Started:** 2026-03-15
@@ -145,6 +167,8 @@
 | Step 4 lint 检查 | `npm run lint` | 验证阅读页改动无 lint 错误 | 仍失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
 | Step 5 类型检查 | `npm run typecheck` | 新增全局播放器 Dock 和路由外层壳编译通过 | 通过 | ✓ |
 | Step 5 lint 检查 | `npm run lint` | 验证全局播放器改动无 lint 错误 | 仍失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
+| Step 6 类型检查 | `npm run typecheck` | 新增 SettingsLayout、hook 与五个子页编译通过 | 通过 | ✓ |
+| Step 6 lint 检查 | `npm run lint` | 验证设置中心拆分改动无 lint 错误 | 仍失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -157,8 +181,8 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | 已完成 Step 5：全局播放器 Dock |
-| Where am I going? | Step 6：设置中心拆分 |
+| Where am I? | 已完成 Step 6：设置中心拆分 |
+| Where am I going? | Step 7：TTS 策略落地 |
 | What's the goal? | 按执行手册逐步把单体阅读工作台拆成面向 C 端的多层页面结构 |
-| What have I learned? | 全局播放器最适合挂在页面外层壳，而不是继续内嵌在阅读页；这样后续设置页拆真实表单时不会再重复展示播放状态 |
-| What have I done? | 已完成 Step 2 书库页、Step 3 详情页、Step 4 阅读器页、Step 5 全局播放器 Dock 与对应类型检查 |
+| What have I learned? | 设置中心最适合通过统一状态层向各子页分发数据；这样既能避免重复请求，也方便下一步继续落地 TTS 策略 |
+| What have I done? | 已完成 Step 2 书库页、Step 3 详情页、Step 4 阅读器页、Step 5 全局播放器 Dock、Step 6 设置中心拆分与对应类型检查 |

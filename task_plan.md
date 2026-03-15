@@ -4,7 +4,7 @@
 基于当前项目真实代码结构，输出一份面向 C 端产品化的详细改造重构文档，明确“云端 TTS 主朗读、本地模型离线兜底”的产品路线，以及页面层级、信息架构、技术拆分和实施阶段。
 
 ## Current Phase
-Phase 10
+Phase 11
 
 ## Phases
 
@@ -67,9 +67,16 @@ Phase 10
 - **Status:** complete
 
 ### Phase 10: Step 6 Preparation
-- [ ] 进入 Step 6：设置中心拆分
-- [ ] 将真实朗读设置、阅读设置、数据与缓存设置迁移到设置页
-- [ ] 避免在设置页重新堆一份重复播放器状态
+- [x] 进入 Step 6：设置中心拆分
+- [x] 将真实朗读设置、阅读设置、数据与缓存设置迁移到设置页
+- [x] 避免在设置页重新堆一份重复播放器状态
+- [x] 将 `ModelManagementPanel` 迁入“离线与模型”
+- **Status:** complete
+
+### Phase 11: Step 7 Preparation
+- [ ] 进入 Step 7：TTS 策略落地
+- [ ] 在共享类型与设置页中引入标准 / 隐私 / 角色模式
+- [ ] 明确远程首选 Provider 与本地兜底 Provider 的策略边界
 - **Status:** pending
 
 ## Key Questions
@@ -97,4 +104,5 @@ Phase 10
 - Step 3 已完成，书籍详情页已接入真实书籍数据、章节选择、继续阅读、开始朗读、删除书籍与独立清缓存。
 - Step 4 已完成，新 `ReaderPage` 已由路由参数驱动，只保留正文、章节抽屉和播放状态，不再复用旧 `ReaderShell`。
 - Step 5 已完成，所有一级页面都共享 `PlayerDock`，阅读页内不再重复挂一套完整播放器。
+- Step 6 已完成，设置中心已拆成五个真实子页，并通过统一状态层共享数据与保存动作。
 - `npm run lint` 受限于仓库缺少 ESLint v9 flat config，后续如需 lint 需先补配置。

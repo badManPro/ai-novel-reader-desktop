@@ -35,6 +35,10 @@
 - Step 5 通过新增 `AppFrame` 把 `PlayerDock` 提升到了所有路由外层，避免分别在 `AppShell` 和 `ReaderPage` 上各挂一份播放器。
 - 全局 Dock 已承接播放状态、暂停/继续/停止、当前书籍/章节、队列规模和可展开的调试指标；阅读页只保留“开始朗读当前章”和章节相关信息。
 - 设置页当前是骨架页，并未展示大状态面板，因此 Step 5 的“去重”重点落在阅读页而不是设置页；后续 Step 6 拆真实设置表单时应继续复用 Dock 而不是重新堆一份播放卡片。
+- Step 6 通过 `SettingsLayout + useSettingsState + Outlet context` 把设置中心真正拆成二级页面结构，而不是继续在 `SettingsPage` 里硬塞所有逻辑。
+- `TtsSettingsPage` 现在承接默认 Provider / 音色 / 倍速与试听，`ReadingSettingsPage` 承接字号 / 行高 / 主题，`OfflineSettingsPage` 承接健康检查与 `ModelManagementPanel`，`DataSettingsPage` 承接缓存与草稿队列，`AboutSettingsPage` 承接版本与产品说明。
+- 由于 Step 7 还未开始，本次没有修改共享类型里的 TTS 策略字段；设置页里只先把“模式预览”和当前默认配置摆正，为下一步的云端优先 / 本地兜底策略落地留位。
+- 设置页已明确依赖全局 `PlayerDock` 查看播放状态，因此没有再重复嵌入一份大的播放态势面板。
 
 ## Technical Decisions
 | Decision | Rationale |
@@ -52,6 +56,8 @@
 | 保留 `ReaderShell` 作为旧工作台，不在本步直接改写 | 当前工作树里该文件已有用户改动，避免在阅读页重构时发生无关冲突 |
 | Step 5 新增 `usePlaybackDockState` 作为全局播放器状态层 | 书库、详情、阅读、设置都需要同一份播放状态，不适合继续挂在页面级 hook 上 |
 | 用 `AppFrame -> AppShell/ReaderPage` 的两层结构承接全局 Dock | 这样既保留阅读页的沉浸布局，也能保证 Dock 跨页面共享 |
+| Step 6 使用 `Outlet context` 向设置子页透传状态，而不是为每个子页单独加载一遍 API 数据 | 避免重复请求与状态漂移，也让五个子页共享同一份保存/刷新动作 |
+| `ModelManagementPanel` 保持原组件不动，只迁移到“离线与模型”子页 | 该组件复杂度较高，先挪位置比重写更稳妥 |
 
 ## Issues Encountered
 | Issue | Resolution |
