@@ -1,3 +1,14 @@
+.app-frame {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-frame-content {
+  flex: 1;
+  min-height: 0;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -549,6 +560,90 @@
   flex: 1 1 160px;
 }
 
+.player-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 60;
+  border-top: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 76%, black 24%), color-mix(in srgb, var(--bg) 92%, white 8%));
+  backdrop-filter: blur(20px);
+  padding: 16px 22px;
+}
+
+.player-dock.active {
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.player-dock-main,
+.player-dock-primary,
+.player-dock-actions,
+.player-dock-metrics {
+  display: flex;
+  gap: 14px;
+}
+
+.player-dock-main,
+.player-dock-metrics {
+  flex-wrap: wrap;
+}
+
+.player-dock-main {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.player-dock-primary {
+  align-items: flex-start;
+  justify-content: space-between;
+  flex: 1 1 540px;
+}
+
+.player-dock-caption,
+.player-dock-message {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.player-dock-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.player-dock-metrics,
+.player-dock-debug-grid,
+.reader-inline-metrics {
+  display: grid;
+  gap: 12px;
+}
+
+.player-dock-metrics {
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  flex: 1 1 420px;
+}
+
+.player-dock-debug-grid,
+.reader-inline-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.player-dock-metrics > div,
+.player-dock-debug-grid > div {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-accent) 84%, white 16%);
+}
+
+.player-dock-expanded {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .reader-chapter-drawer {
   position: fixed;
   top: 0;
@@ -622,6 +717,8 @@
     border-bottom: 1px solid var(--border);
   }
 
+  .player-dock-metrics,
+  .player-dock-debug-grid,
   .immersive-reader-layout,
   .book-detail-grid,
   .book-meta-grid,
@@ -641,7 +738,9 @@
   .library-section-heading,
   .library-book-card-header,
   .immersive-reader-header,
-  .reader-drawer-header {
+  .reader-drawer-header,
+  .player-dock-main,
+  .player-dock-primary {
     flex-direction: column;
   }
 

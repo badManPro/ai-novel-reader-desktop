@@ -63,6 +63,23 @@
   - `src/renderer/pages/reader/ReaderPage.tsx` (updated)
   - `src/renderer/styles/app-shell.css` (updated)
 
+### Step 5: 全局播放器 Dock
+- **Status:** complete
+- Actions taken:
+  - 新增 `src/renderer/app/AppFrame.tsx`，将路由外层升级为“页面内容 + 全局播放器 Dock”的统一壳层。
+  - 新增 `src/renderer/hooks/usePlaybackDockState.ts` 与 `src/renderer/components/player/PlayerDock.tsx`，把播放状态订阅、队列信息、控制动作和调试指标统一抽到跨页面共享层。
+  - 更新 `src/renderer/app/routes.tsx`，让书库、详情、阅读、设置全部经过 `AppFrame`，共享同一层播放器。
+  - 收窄 `src/renderer/pages/reader/ReaderPage.tsx`，移除页面内重复的播放面板，只保留章节相关操作和阅读快照。
+  - 更新 `src/renderer/styles/app-shell.css`，补充 Dock、外层壳和收窄后的阅读页样式，并删除旧 `ReaderPlaybackPanel.tsx`。
+- Files created/modified:
+  - `src/renderer/app/AppFrame.tsx` (created)
+  - `src/renderer/hooks/usePlaybackDockState.ts` (created)
+  - `src/renderer/components/player/PlayerDock.tsx` (created)
+  - `src/renderer/app/routes.tsx` (updated)
+  - `src/renderer/pages/reader/ReaderPage.tsx` (updated)
+  - `src/renderer/styles/app-shell.css` (updated)
+  - `src/renderer/components/reader/ReaderPlaybackPanel.tsx` (deleted)
+
 ### Phase 1: Requirements & Discovery
 - **Status:** complete
 - **Started:** 2026-03-15
@@ -126,6 +143,8 @@
 | Step 3 lint 检查 | `npm run lint` | 验证详情页改动无 lint 错误 | 仍失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
 | Step 4 类型检查 | `npm run typecheck` | 新增阅读页 hook、组件和样式编译通过 | 首次因 `ref` 类型不匹配失败，修正后通过 | ✓ |
 | Step 4 lint 检查 | `npm run lint` | 验证阅读页改动无 lint 错误 | 仍失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
+| Step 5 类型检查 | `npm run typecheck` | 新增全局播放器 Dock 和路由外层壳编译通过 | 通过 | ✓ |
+| Step 5 lint 检查 | `npm run lint` | 验证全局播放器改动无 lint 错误 | 仍失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -138,8 +157,8 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | 已完成 Step 4：阅读器页重构 |
-| Where am I going? | Step 5：全局播放器 Dock |
+| Where am I? | 已完成 Step 5：全局播放器 Dock |
+| Where am I going? | Step 6：设置中心拆分 |
 | What's the goal? | 按执行手册逐步把单体阅读工作台拆成面向 C 端的多层页面结构 |
-| What have I learned? | 阅读页最适合由路由参数和独立 hook 驱动；播放指标先下沉到 lib，后续全局 Dock 会更容易接入 |
-| What have I done? | 已完成 Step 2 书库页、Step 3 详情页、Step 4 阅读器页与对应类型检查 |
+| What have I learned? | 全局播放器最适合挂在页面外层壳，而不是继续内嵌在阅读页；这样后续设置页拆真实表单时不会再重复展示播放状态 |
+| What have I done? | 已完成 Step 2 书库页、Step 3 详情页、Step 4 阅读器页、Step 5 全局播放器 Dock 与对应类型检查 |

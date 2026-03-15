@@ -4,6 +4,7 @@ import {
   Route,
   Routes
 } from 'react-router-dom';
+import { AppFrame } from './AppFrame';
 import { AppShell } from './AppShell';
 import { BookDetailPage } from '../pages/book/BookDetailPage';
 import { LibraryPage } from '../pages/library/LibraryPage';
@@ -19,21 +20,23 @@ export function AppRoutes() {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/library" replace />} />
-        <Route element={<AppShell />}>
-          <Route path="/library" element={<LibraryPage />} />
-          <Route path="/book/:bookId" element={<BookDetailPage />} />
-          <Route path="/settings" element={<SettingsPage />}>
-            <Route index element={<Navigate to="tts" replace />} />
-            <Route path="tts" element={<TtsSettingsPage />} />
-            <Route path="reading" element={<ReadingSettingsPage />} />
-            <Route path="offline" element={<OfflineSettingsPage />} />
-            <Route path="data" element={<DataSettingsPage />} />
-            <Route path="about" element={<AboutSettingsPage />} />
+        <Route element={<AppFrame />}>
+          <Route path="/" element={<Navigate to="/library" replace />} />
+          <Route element={<AppShell />}>
+            <Route path="/library" element={<LibraryPage />} />
+            <Route path="/book/:bookId" element={<BookDetailPage />} />
+            <Route path="/settings" element={<SettingsPage />}>
+              <Route index element={<Navigate to="tts" replace />} />
+              <Route path="tts" element={<TtsSettingsPage />} />
+              <Route path="reading" element={<ReadingSettingsPage />} />
+              <Route path="offline" element={<OfflineSettingsPage />} />
+              <Route path="data" element={<DataSettingsPage />} />
+              <Route path="about" element={<AboutSettingsPage />} />
+            </Route>
           </Route>
+          <Route path="/reader/:bookId/:chapterId" element={<ReaderPage />} />
+          <Route path="*" element={<Navigate to="/library" replace />} />
         </Route>
-        <Route path="/reader/:bookId/:chapterId" element={<ReaderPage />} />
-        <Route path="*" element={<Navigate to="/library" replace />} />
       </Routes>
     </HashRouter>
   );

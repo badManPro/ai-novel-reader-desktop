@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { TtsPlaybackState } from '../../../shared/types';
 import { ReaderChapterDrawer } from '../../components/reader/ReaderChapterDrawer';
 import { ReaderContent } from '../../components/reader/ReaderContent';
-import { ReaderPlaybackPanel } from '../../components/reader/ReaderPlaybackPanel';
 import { useReaderPageState } from '../../hooks/useReaderPageState';
 
 export function ReaderPage() {
@@ -20,18 +19,13 @@ export function ReaderPage() {
     isChapterDrawerOpen,
     setIsChapterDrawerOpen,
     playbackMetrics,
-    playbackStateSummary,
-    playbackTimeline,
-    queueChapterCount,
     currentReadingPosition,
-    readingPositionKey,
-    ttsState,
     currentProvider,
     currentVoice,
     handleContentScroll,
     handleSpeak,
     saveBookProgress,
-    syncPlaybackState
+    readingPositionKey
   } = useReaderPageState(bookId, chapterId);
 
   useEffect(() => {
@@ -139,22 +133,69 @@ export function ReaderPage() {
           />
         </section>
 
-        <ReaderPlaybackPanel
-          providerLabel={currentProvider?.name ?? settings.defaultProviderId}
-          voiceLabel={currentVoice?.name ?? settings.defaultVoiceId}
-          speedLabel={`${settings.defaultSpeed}x`}
-          chapterTitle={currentChapter?.title ?? '未选择章节'}
-          queueChapterCount={queueChapterCount}
-          ttsState={ttsState}
-          playbackStateSummary={playbackStateSummary}
-          playbackTimeline={playbackTimeline}
-          playbackMetrics={playbackMetrics}
-          onSpeak={handleStartSpeak}
-          onPause={() => syncPlaybackState(api?.pauseTts() ?? Promise.resolve({ status: 'idle', queue: [], message: 'API 不可用。' } as TtsPlaybackState))}
-          onResume={() => syncPlaybackState(api?.resumeTts() ?? Promise.resolve({ status: 'idle', queue: [], message: 'API 不可用。' } as TtsPlaybackState))}
-          onStop={() => syncPlaybackState(api?.stopTts() ?? Promise.resolve({ status: 'idle', queue: [], message: 'API 不可用。' } as TtsPlaybackState))}
-          onRefresh={() => syncPlaybackState(api?.getTtsStatus() ?? Promise.resolve({ status: 'idle', queue: [], message: 'API 不可用。' } as TtsPlaybackState))}
-        />
+        <aside className="immersive-reader-rail">
+          <article className="route-card immersive-quick-panel">
+            <div className="library-section-heading">
+              <div>
+                <p className="route-page-kicker">Reading Focus</p>
+                <h4>当前阅读快照</h4>
+              </div>
+            </div>
+            <div className="book-summary-grid immersive-summary-grid">
+              <div>
+                <span className="route-page-kicker">Provider</span>
+                <strong>{currentProvider?.name ?? settings.defaultProviderId}</strong>
+              </div>
+              <div>
+                <span className="route-page-kicker">Voice</span>
+                <strong>{currentVoice?.name ?? settings.defaultVoiceId}</strong>
+              </div>
+              <div>
+                <span className="route-page-kicker">Speed</span>
+                <strong>{settings.defaultSpeed}x</strong>
+              </div>
+              <div>
+                <span className="route-page-kicker">Current</span>
+                <strong>{currentChapter?.title ?? '未选择章节'}</strong>
+              </div>
+            </div>
+          </article>
+
+          <article className="route-card immersive-control-panel">
+            <div className="library-section-heading">
+              <div>
+                <p className="route-page-kicker">Chapter</p>
+                <h4>当前章操作</h4>
+              </div>
+            </div>
+            <div className="immersive-control-stack">
+              <button type="button" onClick={() => void handleStartSpeak()}>
+                开始朗读当前章
+              </button>
+              <button type="button" className="secondary" onClick={() => setIsChapterDrawerOpen(true)}>
+                打开目录
+              </button>
+            </div>
+            <div className="player-dock-debug-grid reader-inline-metrics">
+              <div>
+                <span className="muted">章节进度</span>
+                <strong>{playbackMetrics.chapterProgress}</strong>
+              </div>
+              <div>
+                <span className="muted">片段进度</span>
+                <strong>{playbackMetrics.chunkProgress}</strong>
+              </div>
+              <div>
+                <span className="muted">字数进度</span>
+                <strong>{playbackMetrics.charProgress}</strong>
+              </div>
+              <div>
+                <span className="muted">缓存命中</span>
+                <strong>{playbackMetrics.cacheSummary}</strong>
+              </div>
+            </div>
+          </article>
+        </aside>
       </div>
 
       <ReaderChapterDrawer

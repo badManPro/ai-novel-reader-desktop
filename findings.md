@@ -32,6 +32,9 @@
 - 新阅读页已经把设置大卡片、模型控制台和书架删除动作移出视图，只保留正文阅读、章节目录抽屉和播放状态面板，符合执行手册的单一职责要求。
 - 为减少后续 Step 5 重复搬运，已把播放状态摘要、时间线和指标计算提取到 `src/renderer/lib/playback-metrics.ts`，后续全局 Player Dock 可直接复用。
 - 当前阅读页的 TTS 控制仍使用“默认 Provider / 默认音色 / 默认倍速”，配置入口不再在阅读页暴露，需由设置页统一管理。
+- Step 5 通过新增 `AppFrame` 把 `PlayerDock` 提升到了所有路由外层，避免分别在 `AppShell` 和 `ReaderPage` 上各挂一份播放器。
+- 全局 Dock 已承接播放状态、暂停/继续/停止、当前书籍/章节、队列规模和可展开的调试指标；阅读页只保留“开始朗读当前章”和章节相关信息。
+- 设置页当前是骨架页，并未展示大状态面板，因此 Step 5 的“去重”重点落在阅读页而不是设置页；后续 Step 6 拆真实设置表单时应继续复用 Dock 而不是重新堆一份播放卡片。
 
 ## Technical Decisions
 | Decision | Rationale |
@@ -47,6 +50,8 @@
 | 详情页继续复用 `useLibraryState` 作为过渡数据层，而不立刻新建更重的状态管理 | 当前目标是尽快把章节与主操作迁出全局侧栏，避免过早投入状态重构 |
 | Step 4 新增 `useReaderPageState` 而不是继续向 `useLibraryState` 塞所有播放逻辑 | 阅读页需要自己的滚动位置、播放订阅和章节抽屉状态，独立 hook 更利于 Step 5 继续拆 Dock |
 | 保留 `ReaderShell` 作为旧工作台，不在本步直接改写 | 当前工作树里该文件已有用户改动，避免在阅读页重构时发生无关冲突 |
+| Step 5 新增 `usePlaybackDockState` 作为全局播放器状态层 | 书库、详情、阅读、设置都需要同一份播放状态，不适合继续挂在页面级 hook 上 |
+| 用 `AppFrame -> AppShell/ReaderPage` 的两层结构承接全局 Dock | 这样既保留阅读页的沉浸布局，也能保证 Dock 跨页面共享 |
 
 ## Issues Encountered
 | Issue | Resolution |
