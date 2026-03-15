@@ -1,55 +1,106 @@
-import { Link } from 'react-router-dom';
+import { LibraryBookCard } from '../../components/library/LibraryBookCard';
+import { LibraryHero } from '../../components/library/LibraryHero';
+import { useLibraryState } from '../../hooks/useLibraryState';
 
 export function LibraryPage() {
+  const {
+    bookshelf,
+    recentBook,
+    isLoading,
+    isImporting,
+    deletingBookId,
+    importWarnings,
+    bookActionMessage,
+    handleDeleteBook,
+    handleImport,
+    getBookProgressChapter
+  } = useLibraryState();
+  const recentChapter = recentBook ? getBookProgressChapter(recentBook) : null;
+
   return (
-    <section className="route-page">
-      <article className="route-hero-card">
-        <div>
-          <p className="route-page-kicker">Step 1 Skeleton</p>
-          <h3>书库已经成为默认首页</h3>
-          <p>
-            这一步先把应用入口从单一阅读工作台切到书库首页。Step 2 会继续把最近阅读、导入、
-            删除和书架网格正式迁移进来。
-          </p>
+    <section className="route-page library-page">
+      <LibraryHero
+        recentBook={recentBook}
+        recentChapter={recentChapter}
+        isImporting={isImporting}
+        onImport={handleImport}
+      />
+
+      {importWarnings.length > 0 ? (
+        <section className="warning-card">
+          <strong>书库提示</strong>
+          <ul>
+            {importWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {bookActionMessage ? (
+        <section className="info-card">
+          <strong>书库操作</strong>
+          <p>{bookActionMessage}</p>
+        </section>
+      ) : null}
+
+      <section className="route-card recent-reading-card">
+        <div className="library-section-heading">
+          <div>
+            <p className="route-page-kicker">Recent Reading</p>
+            <h4>最近阅读</h4>
+          </div>
+          <span className="library-section-meta">{bookshelf.length} 本已入库</span>
         </div>
-        <div className="route-hero-actions">
-          <Link to="/reader/demo-book/demo-chapter" className="route-primary-link">
-            进入旧阅读工作区
-          </Link>
-          <Link to="/settings/tts" className="route-secondary-link">
-            查看设置骨架
-          </Link>
+
+        {recentBook ? (
+          <div className="library-recent-grid">
+            <div className="library-recent-highlight">
+              <strong>{recentBook.title}</strong>
+              <p>{recentChapter?.title ?? '首章'} · {recentBook.chapters.length} 章 · {recentBook.format.toUpperCase()}</p>
+            </div>
+            <p className="library-recent-copy">
+              默认继续阅读和朗读都从最近位置进入；书籍详情页会在下一步继续承接章节导航和更完整的书籍操作。
+            </p>
+          </div>
+        ) : (
+          <p className="library-empty-copy">当前还没有书。先导入一本 TXT，书库页会自动显示最近阅读和书籍卡片。</p>
+        )}
+      </section>
+
+      <section className="route-page">
+        <div className="library-section-heading">
+          <div>
+            <p className="route-page-kicker">My Library</p>
+            <h4>我的书库</h4>
+          </div>
+          <span className="library-section-meta">{isLoading ? '加载中…' : `按最近导入排序`}</span>
         </div>
-      </article>
 
-      <div className="route-card-grid">
-        <article className="route-card">
-          <p className="route-page-kicker">Continue Reading</p>
-          <h4>当前阅读入口</h4>
-          <p>保留旧 `ReaderShell` 作为过渡工作区，后续由阅读页和播放器 Dock 逐步替代。</p>
-          <Link to="/reader/demo-book/demo-chapter" className="route-inline-link">
-            打开阅读页
-          </Link>
-        </article>
-
-        <article className="route-card">
-          <p className="route-page-kicker">Book Detail</p>
-          <h4>书籍详情页骨架</h4>
-          <p>单本书的章节、进度和主操作会迁移到详情页，不再长期挤在左侧边栏。</p>
-          <Link to="/book/demo-book" className="route-inline-link">
-            查看详情页
-          </Link>
-        </article>
-
-        <article className="route-card">
-          <p className="route-page-kicker">Settings</p>
-          <h4>设置路由已拆分</h4>
-          <p>朗读、阅读、离线与模型、数据和关于的二级路径已经建好，后续逐步填充真实内容。</p>
-          <Link to="/settings/tts" className="route-inline-link">
-            打开设置
-          </Link>
-        </article>
-      </div>
+        {bookshelf.length ? (
+          <div className="library-card-grid">
+            {bookshelf.map((book) => (
+              <LibraryBookCard
+                key={book.id}
+                book={book}
+                progressChapter={getBookProgressChapter(book)}
+                isRecent={book.id === recentBook?.id}
+                isDeleting={deletingBookId === book.id}
+                onDelete={handleDeleteBook}
+              />
+            ))}
+          </div>
+        ) : (
+          <article className="route-card library-empty-state">
+            <p className="route-page-kicker">Empty State</p>
+            <h4>书库还是空的</h4>
+            <p>支持先从 TXT 导入。后续会在设置与关于页补齐格式说明与数据管理。</p>
+            <button type="button" onClick={() => void handleImport()} disabled={isImporting}>
+              {isImporting ? '导入中…' : '导入 TXT'}
+            </button>
+          </article>
+        )}
+      </section>
     </section>
   );
 }

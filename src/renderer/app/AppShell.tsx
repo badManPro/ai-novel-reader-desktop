@@ -20,7 +20,7 @@ function getPageMeta(pathname: string) {
   return {
     eyebrow: 'Library',
     title: '书库',
-    description: '新的默认首页。Step 2 会把最近阅读、导入入口和书架卡片正式迁移到这里。'
+    description: '新的默认首页已经接入真实书架数据；下一步会继续把章节与主操作迁移到书籍详情页。'
   };
 }
 
@@ -34,7 +34,7 @@ export function AppShell() {
         <div className="app-shell-brand">
           <p className="app-shell-kicker">AI Novel Reader</p>
           <h1>Consumer Refactor</h1>
-          <p className="app-shell-caption">Step 1 已切入 App Shell 和页面骨架，旧阅读工作台先保留复用。</p>
+          <p className="app-shell-caption">书库已经切入真实数据流，旧阅读工作台暂由 `ReaderShell` 过渡承接。</p>
         </div>
 
         <nav className="app-shell-nav" aria-label="主导航">
@@ -54,7 +54,7 @@ export function AppShell() {
 
         <div className="app-shell-sidebar-footer">
           <span className="app-shell-status-pill">Cloud-first TTS</span>
-          <p>默认云端朗读，本地离线兜底。阅读工作区仍由旧 `ReaderShell` 承接，后续步骤逐步迁移。</p>
+          <p>默认云端朗读，本地离线兜底。当前优先把“导入书、进入书、继续读”打通成用户主路径。</p>
         </div>
       </aside>
 

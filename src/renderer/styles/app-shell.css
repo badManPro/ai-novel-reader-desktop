@@ -228,6 +228,132 @@
   padding: 24px;
 }
 
+.library-page {
+  gap: 24px;
+}
+
+.library-hero-card {
+  align-items: stretch;
+  background:
+    radial-gradient(circle at top right, rgba(47, 181, 163, 0.18), transparent 32%),
+    linear-gradient(135deg, color-mix(in srgb, var(--bg-accent) 90%, white 10%), color-mix(in srgb, var(--bg) 86%, #0b1735 14%));
+}
+
+.library-hero-copy,
+.library-hero-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.library-hero-copy {
+  max-width: 640px;
+}
+
+.library-feature-row,
+.library-book-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.library-feature-chip,
+.library-book-badge,
+.library-section-meta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: color-mix(in srgb, var(--bg-accent) 82%, white 18%);
+  font-size: 13px;
+}
+
+.library-hero-side {
+  min-width: min(320px, 100%);
+}
+
+.library-metric-grid,
+.library-recent-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.library-metric-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.library-metric-grid > div,
+.library-recent-highlight {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 80%, var(--bg-accent) 20%);
+}
+
+.library-metric-grid strong,
+.library-recent-highlight strong,
+.library-book-progress strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.library-section-heading,
+.library-book-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.recent-reading-card {
+  padding: 24px;
+}
+
+.library-recent-highlight p,
+.library-recent-copy,
+.library-book-meta {
+  margin-bottom: 0;
+}
+
+.library-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.library-book-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.library-book-card.recent {
+  border-color: rgba(47, 181, 163, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(47, 181, 163, 0.16);
+}
+
+.library-book-progress {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 78%, var(--bg-accent) 22%);
+}
+
+.library-empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.library-empty-copy {
+  margin: 0;
+  color: var(--muted);
+}
+
 @media (max-width: 1100px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -238,6 +364,7 @@
     border-bottom: 1px solid var(--border);
   }
 
+  .library-card-grid,
   .route-card-grid,
   .route-card-grid.two-up,
   .settings-route-page {
@@ -247,11 +374,17 @@
 
 @media (max-width: 760px) {
   .app-shell-header,
-  .route-hero-card {
+  .route-hero-card,
+  .library-section-heading,
+  .library-book-card-header {
     flex-direction: column;
   }
 
   .app-shell-content {
     padding: 18px;
+  }
+
+  .library-metric-grid {
+    grid-template-columns: 1fr;
   }
 }
