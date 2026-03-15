@@ -1,0 +1,257 @@
+.app-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-shell-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 28px 22px;
+  border-right: 1px solid var(--border);
+  background:
+    radial-gradient(circle at top left, rgba(166, 201, 255, 0.12), transparent 38%),
+    color-mix(in srgb, var(--sidebar-bg) 86%, black 14%);
+}
+
+.app-shell-brand h1,
+.app-shell-header h2,
+.route-hero-card h3,
+.route-card h4,
+.settings-route-nav h3 {
+  margin: 0;
+}
+
+.app-shell-kicker,
+.route-page-kicker {
+  margin: 0 0 8px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+}
+
+.app-shell-caption,
+.route-card p,
+.route-hero-card p,
+.settings-route-nav p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.app-shell-nav,
+.settings-route-tab-list,
+.route-hero-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-shell-nav-link,
+.settings-route-tab,
+.app-shell-action,
+.route-primary-link,
+.route-secondary-link,
+.route-inline-link {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.app-shell-nav-link,
+.settings-route-tab {
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--bg-accent) 88%, white 12%);
+}
+
+.app-shell-nav-link.active,
+.settings-route-tab.active {
+  border-color: rgba(118, 191, 255, 0.6);
+  background: rgba(118, 191, 255, 0.14);
+}
+
+.app-shell-nav-link.ghost {
+  border-style: dashed;
+}
+
+.app-shell-sidebar-footer,
+.route-card,
+.route-hero-card,
+.settings-route-nav,
+.settings-route-card {
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-accent) 92%, white 8%);
+}
+
+.app-shell-sidebar-footer {
+  margin-top: auto;
+  padding: 18px;
+}
+
+.app-shell-status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: rgba(118, 191, 255, 0.18);
+  color: #c8e7ff;
+  font-size: 12px;
+  border: 1px solid rgba(118, 191, 255, 0.35);
+}
+
+.app-shell-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 88%, white 12%);
+}
+
+.app-shell-header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-shell-action,
+.route-primary-link,
+.route-secondary-link,
+.route-inline-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+.app-shell-action,
+.route-primary-link {
+  background: linear-gradient(135deg, #4b7aff, #2fb5a3);
+  color: white;
+  border-color: transparent;
+}
+
+.app-shell-action.secondary,
+.route-secondary-link,
+.route-inline-link {
+  background: color-mix(in srgb, var(--bg-accent) 88%, white 12%);
+}
+
+.app-shell-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 28px;
+}
+
+.route-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.route-hero-card,
+.settings-route-page {
+  padding: 24px;
+}
+
+.route-hero-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.route-hero-card.compact {
+  align-items: center;
+}
+
+.route-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.route-card-grid.two-up {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.route-card {
+  padding: 20px;
+}
+
+.route-list {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.settings-route-page {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 20px;
+}
+
+.settings-route-nav,
+.settings-route-panel {
+  min-height: 0;
+}
+
+.settings-route-nav {
+  padding: 20px;
+}
+
+.settings-route-panel {
+  display: flex;
+}
+
+.settings-route-card {
+  width: 100%;
+  padding: 24px;
+}
+
+@media (max-width: 1100px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .route-card-grid,
+  .route-card-grid.two-up,
+  .settings-route-page {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell-header,
+  .route-hero-card {
+    flex-direction: column;
+  }
+
+  .app-shell-content {
+    padding: 18px;
+  }
+}

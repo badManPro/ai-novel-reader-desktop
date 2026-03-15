@@ -1,5 +1,5 @@
-import { ReaderShell } from './components/ReaderShell';
+import { AppRoutes } from './app/routes';
 
 export default function App() {
-  return <ReaderShell />;
+  return <AppRoutes />;
 }
