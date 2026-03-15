@@ -1,13 +1,13 @@
 # AI Novel Reader Desktop
 
-一个面向桌面场景的 **AI 读小说客户端**，基于 Electron + React + TypeScript 构建。当前正式进入 **第八阶段：离线语音实装联调推进**。
+一个面向桌面场景的 **AI 读小说客户端**，基于 Electron + React + TypeScript 构建。当前产品路线已切换到 **云端 TTS 主朗读 + 本地离线兜底**。
 
 新的语音主路线：
-- **CosyVoice-300M-SFT**：默认主朗读引擎，负责长文本、整章与稳定连续朗读
-- **GPT-SoVITS**：角色声线、声音克隆与人物化演绎引擎
-- **云端 Provider（OpenAI / GLM）**：降级为可选扩展，不再作为主链路依赖
+- **云端 Provider（OpenAI TTS / GLM TTS 等）**：默认主朗读引擎，负责长文本、整章与稳定连续朗读
+- **本地轻量 Provider / system-say**：离线、隐私优先或云端不可用时的保底兜底
+- **GPT-SoVITS / 其他本地角色模型**：角色声线、声音克隆与人物化演绎引擎，仅在高级场景启用
 
-> 当前重点链路已调整为：**TXT 导入 → SQLite 持久化 → 阅读展示 → 本地离线引擎健康检查 / 接线状态 → 离线 TTS 合成入口 → 播放状态事件驱动 UI**。
+> 当前重点链路已调整为：**TXT 导入 → SQLite 持久化 → 书库 / 阅读展示 → 云端 TTS 整章朗读 → 本地离线兜底 / 角色声线 → 播放状态事件驱动 UI**。
 
 ## 第八阶段本次新增实现
 
@@ -73,21 +73,26 @@
 
 ## 当前 Provider 结构
 
-### 离线主链路（推荐）
-1. `cosyvoice-local`
+### 云端主链路（默认推荐）
+1. `openai-tts`
    - 默认主 Provider
-   - 推荐承担整章朗读
-2. `gpt-sovits-local`
+   - 推荐承担整章连续朗读与长文本播放
+2. `glm-tts`
+   - 云端备选 Provider
+   - 用于云端能力切换或区域性备份
+
+### 本地离线兜底
+1. `system-say`
+   - 最小可用回退
+   - 适合无网、调试或极简兜底
+2. `cosyvoice-local`
+   - 本地轻量朗读保底
+   - 适合隐私优先或云端失败时降级
+
+### 本地角色声线扩展
+1. `gpt-sovits-local`
    - 角色声线 / 克隆路线
-   - 适合人物化段落或配音扩展
-
-### 系统兜底
-- `system-say`
-- 主要用于开发机上的最小可用回退
-
-### 云端可选扩展
-- `openai-tts`
-- `glm-tts`
+   - 适合人物化段落或高级配音扩展
 
 ## 离线服务环境变量示例
 
@@ -119,14 +124,14 @@ npm run dev
 ```
 
 然后按这个顺序联调：
-1. 先把 `scripts/offline-tts/*.env` 从占位值改成真实路径
-2. 先手工跑通 **CosyVoice-300M-SFT**（推荐先不要开 `spawn`）
-3. 再手工跑通 **GPT-SoVITS**
-4. 导入 TXT
-5. 选择 `cosyvoice-local` 或 `gpt-sovits-local`
-6. 点击“开始自动续播”
-7. 观察健康状态、接线状态、错误提示与播放状态变化
-8. 两个引擎都手工跑通后，再考虑切到 `spawn` 模式
+1. 先配置云端 Provider（如 `openai-tts`）并确认可发起朗读
+2. 导入 TXT
+3. 选择默认云端 Provider 并点击“开始自动续播”
+4. 观察播放状态、错误提示与章节连续朗读结果
+5. 再把 `scripts/offline-tts/*.env` 从占位值改成真实路径
+6. 手工跑通 **CosyVoice-300M-SFT**，验证离线兜底可用
+7. 再手工跑通 **GPT-SoVITS**，验证角色声线场景
+8. 两个本地引擎都可用后，再考虑切到 `spawn` 模式
 
 > 真机部署清单、目录规划、环境要求、安装顺序、验证步骤、常见报错排查，见：[`docs/OFFLINE-TTS-SETUP.md`](./docs/OFFLINE-TTS-SETUP.md)
 
@@ -149,4 +154,4 @@ npm run build
 npm test
 ```
 
-若本地未安装完整 Python 推理环境，构建与测试仍应可通过；真实语音播放需待 CosyVoice / GPT-SoVITS 模型与服务就位后联调。
+若本地未安装完整 Python 推理环境，构建与测试仍应可通过；默认云端朗读链路应先可用，本地 CosyVoice / GPT-SoVITS 作为离线与角色声线扩展能力再做联调。
