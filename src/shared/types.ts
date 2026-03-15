@@ -1,6 +1,7 @@
 export type BookFormat = 'txt' | 'epub' | 'pdf' | 'md';
 export type SupportedEncoding = 'utf-8' | 'utf-8-bom' | 'utf-16le' | 'utf-16be' | 'gb18030' | 'unknown';
 export type TtsPlaybackStatus = 'idle' | 'loading' | 'reading' | 'paused' | 'error';
+export type TtsMode = 'standard' | 'privacy' | 'character';
 export type TtsPlaybackPhase =
   | 'idle'
   | 'preparing'
@@ -95,6 +96,9 @@ export interface TtsSpeakRequest {
   text: string;
   voiceId: string;
   speed?: number;
+  mode?: TtsMode;
+  fallbackProviderId?: string;
+  fallbackVoiceId?: string;
   chapterId?: string;
   chapterTitle?: string;
   bookId?: string;
@@ -105,6 +109,9 @@ export interface TtsSpeakResult {
   status: TtsPlaybackStatus;
   providerId: string;
   voiceId: string;
+  effectiveProviderId?: string;
+  effectiveVoiceId?: string;
+  fallbackUsed?: boolean;
   message: string;
 }
 
@@ -117,6 +124,9 @@ export interface PlaybackQueueItem {
   providerId: string;
   voiceId: string;
   speed: number;
+  mode?: TtsMode;
+  fallbackProviderId?: string;
+  fallbackVoiceId?: string;
   order: number;
   chunkIndex: number;
   chunkCount: number;
@@ -156,8 +166,13 @@ export interface TtsPlaybackState {
   status: TtsPlaybackStatus;
   phase?: TtsPlaybackPhase;
   phaseLabel?: string;
+  mode?: TtsMode;
   providerId?: string;
   voiceId?: string;
+  effectiveProviderId?: string;
+  effectiveVoiceId?: string;
+  fallbackUsed?: boolean;
+  fallbackReason?: string;
   speed?: number;
   queue: PlaybackQueueItem[];
   currentItem?: PlaybackQueueItem;
@@ -436,6 +451,13 @@ export interface ReaderSettings {
   defaultProviderId: string;
   defaultVoiceId: string;
   defaultSpeed: number;
+  ttsMode?: TtsMode;
+  standardProviderId?: string;
+  standardVoiceId?: string;
+  privacyProviderId?: string;
+  privacyVoiceId?: string;
+  characterProviderId?: string;
+  characterVoiceId?: string;
   fontSize: number;
   lineHeight: number;
   theme: ReaderTheme;

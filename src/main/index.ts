@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 import type {
+  ChapterPlaybackSource,
   ClearBookCacheResult,
   DeleteBookResult,
   ReaderPersistedState,
@@ -25,6 +26,31 @@ const readerStoreService = new ReaderStoreService();
 const playbackDiskCache = new PlaybackDiskCache();
 const offlineTtsConsoleService = new OfflineTtsConsoleService();
 const offlineModelTaskService = new OfflineModelTaskService();
+
+async function buildChapterSequenceForSpeak(request: TtsSpeakRequest): Promise<ChapterPlaybackSource[] | undefined> {
+  if (request.chapterSequence?.length) {
+    return request.chapterSequence;
+  }
+
+  if (!request.bookId || !request.chapterId) {
+    return undefined;
+  }
+
+  const state = await readerStoreService.loadState();
+  const book = state.bookshelf.find((item) => item.id === request.bookId);
+  if (!book) {
+    return undefined;
+  }
+
+  const startIndex = book.chapters.findIndex((chapter) => chapter.id === request.chapterId);
+  const normalizedStartIndex = startIndex >= 0 ? startIndex : 0;
+  return book.chapters.slice(normalizedStartIndex).map((chapter) => ({
+    chapterId: chapter.id,
+    chapterTitle: chapter.title,
+    text: chapter.content,
+    order: chapter.order
+  }));
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -64,13 +90,13 @@ async function clearBookCache(bookId: string): Promise<ClearBookCacheResult> {
     removedEntries: cleanup.removedEntries,
     removedAudioBytes: cleanup.removedAudioBytes
   };
-
 }
+
 function registerIpcHandlers() {
   ipcMain.handle('books:import-txt', async () => bookImportService.importTxtBook());
   ipcMain.handle('books:delete', async (_event, bookId: string) => deleteBook(bookId));
-  ipcMain.handle('reader-state:load', async () => readerStoreService.loadState());
   ipcMain.handle('books:clear-cache', async (_event, bookId: string) => clearBookCache(bookId));
+  ipcMain.handle('reader-state:load', async () => readerStoreService.loadState());
   ipcMain.handle('reader-state:save', async (_event, patch: Partial<ReaderPersistedState>) => readerStoreService.saveState(patch));
   ipcMain.handle('tts:list-providers', async () => ttsCatalogService.listProviders());
   ipcMain.handle('tts:list-voices', async (_event, providerId: string) => ttsCatalogService.listVoices(providerId));
@@ -88,7 +114,13 @@ function registerIpcHandlers() {
   ipcMain.handle('tts:offline-model-asset-manifests', async () => listOfflineModelAssetManifests());
   ipcMain.handle('tts:offline-model-task-create', async (_event, providerId: 'cosyvoice-local' | 'gpt-sovits-local', action: 'prepare' | 'download' | 'install') => offlineModelTaskService.createTask(providerId, action));
   ipcMain.handle('tts:offline-model-task-retry', async (_event, taskId: string) => offlineModelTaskService.retryTask(taskId));
-  ipcMain.handle('tts:speak', async (_event, request: TtsSpeakRequest): Promise<TtsSpeakResult> => playbackService.speak(request));
+  ipcMain.handle('tts:speak', async (_event, request: TtsSpeakRequest): Promise<TtsSpeakResult> => {
+    const chapterSequence = await buildChapterSequenceForSpeak(request);
+    return playbackService.speak({
+      ...request,
+      chapterSequence
+    });
+  });
   ipcMain.handle('tts:pause', async () => playbackService.pause());
   ipcMain.handle('tts:resume', async () => playbackService.resume());
   ipcMain.handle('tts:stop', async () => playbackService.stop());

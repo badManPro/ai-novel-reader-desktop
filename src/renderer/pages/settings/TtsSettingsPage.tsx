@@ -1,15 +1,26 @@
 import { useSettingsOutlet } from './useSettingsOutlet';
+import { TTS_MODE_LABELS } from '../../../shared/tts-strategy';
+import type { TtsMode } from '../../../shared/types';
+
+const modeDescriptions: Record<TtsMode, string> = {
+  standard: '云端整章朗读优先，失败时自动切到本地兜底。',
+  privacy: '只走本地或系统语音，不上传正文。',
+  character: '本地角色声线与克隆能力，保留在高级模式。'
+};
 
 export function TtsSettingsPage() {
   const {
-    providers,
+    modeProviders,
+    selectedMode,
     voices,
     selectedProviderId,
     selectedVoiceId,
     selectedSpeed,
+    setSelectedMode,
     setSelectedProviderId,
     setSelectedVoiceId,
     setSelectedSpeed,
+    draftStrategy,
     currentProvider,
     speedOptions,
     saveTtsDefaults,
@@ -20,14 +31,28 @@ export function TtsSettingsPage() {
     <section className="settings-page-stack">
       <article className="route-card settings-route-card">
         <p className="route-page-kicker">TTS</p>
-        <h4>默认朗读</h4>
-        <p>把最常用的 Provider、音色和语速放在一起；真正的播放态势统一看底部 Player Dock。</p>
+        <h4>默认朗读策略</h4>
+        <p>先选主模式，再配置当前模式对应的 Provider、音色和语速；真正的播放态势统一看底部 Player Dock。</p>
+
+        <div className="route-card-grid">
+          {(Object.keys(modeDescriptions) as TtsMode[]).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className={`settings-route-tab ${selectedMode === mode ? 'active' : ''}`}
+              onClick={() => setSelectedMode(mode)}
+            >
+              <strong>{TTS_MODE_LABELS[mode]}</strong>
+              <small>{modeDescriptions[mode]}</small>
+            </button>
+          ))}
+        </div>
 
         <div className="settings-form-grid">
           <label>
-            <span>语音引擎</span>
+            <span>当前模式 Provider</span>
             <select value={selectedProviderId} onChange={(event) => setSelectedProviderId(event.target.value)}>
-              {providers.map((provider) => (
+              {modeProviders.map((provider) => (
                 <option key={provider.id} value={provider.id}>
                   {provider.name}
                 </option>
@@ -58,7 +83,7 @@ export function TtsSettingsPage() {
 
         <div className="actions">
           <button type="button" onClick={() => void saveTtsDefaults()}>
-            保存为默认
+            保存默认策略
           </button>
           <button type="button" className="secondary" onClick={() => void previewTts()}>
             试听当前配置
@@ -73,12 +98,27 @@ export function TtsSettingsPage() {
 
       <article className="route-card settings-route-card">
         <p className="route-page-kicker">Modes</p>
-        <h4>模式预览</h4>
-        <ul className="route-list">
-          <li>标准模式：优先日常整章朗读，底部 Dock 统一展示播放状态。</li>
-          <li>隐私模式：后续 Step 7 在这里落地本地兜底策略与文案。</li>
-          <li>角色模式：继续保留为高级能力，不抢占普通用户默认入口。</li>
-        </ul>
+        <h4>策略落点</h4>
+        <div className="route-card-grid">
+          <section className="settings-metric-card">
+            <p className="route-page-kicker">Standard</p>
+            <strong>{draftStrategy.standard.providerId}</strong>
+            <p>音色：{draftStrategy.standard.voiceId}</p>
+            <p>失败后兜底：{draftStrategy.fallback?.providerId ?? '无'}</p>
+          </section>
+          <section className="settings-metric-card">
+            <p className="route-page-kicker">Privacy</p>
+            <strong>{draftStrategy.privacy.providerId}</strong>
+            <p>音色：{draftStrategy.privacy.voiceId}</p>
+            <p>本模式下不走云端。</p>
+          </section>
+          <section className="settings-metric-card">
+            <p className="route-page-kicker">Character</p>
+            <strong>{draftStrategy.character.providerId}</strong>
+            <p>音色：{draftStrategy.character.voiceId}</p>
+            <p>作为高级能力保留，不抢默认入口。</p>
+          </section>
+        </div>
       </article>
     </section>
   );

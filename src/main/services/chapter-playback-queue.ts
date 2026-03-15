@@ -5,6 +5,8 @@ const DEFAULT_MAX_CHUNK_LENGTH = 280;
 
 export interface BuildQueueOptions {
   maxChunkLength?: number;
+  firstChunkMaxLength?: number;
+  startOrder?: number;
 }
 
 export function buildPlaybackQueue(
@@ -12,25 +14,7 @@ export function buildPlaybackQueue(
   options: BuildQueueOptions = {}
 ): PlaybackQueueItem[] {
   const chapters = normalizeChapterSequence(request);
-  const maxChunkLength = options.maxChunkLength ?? DEFAULT_MAX_CHUNK_LENGTH;
-  let order = 0;
-
-  return chapters.flatMap((chapter) => {
-    const chunks = splitTextIntoChunks(chapter.text, maxChunkLength);
-    return chunks.map((chunk, chunkIndex) => ({
-      id: randomUUID(),
-      bookId: request.bookId,
-      chapterId: chapter.chapterId,
-      title: chapter.chapterTitle,
-      text: chunk,
-      providerId: request.providerId,
-      voiceId: request.voiceId,
-      speed: request.speed,
-      order: order++,
-      chunkIndex,
-      chunkCount: chunks.length
-    } satisfies PlaybackQueueItem));
-  });
+  return buildPlaybackQueueFromSources(chapters, request, options);
 }
 
 export function normalizeChapterSequence(request: Partial<TtsSpeakRequest>): ChapterPlaybackSource[] {
@@ -51,10 +35,56 @@ export function normalizeChapterSequence(request: Partial<TtsSpeakRequest>): Cha
   }];
 }
 
-export function splitTextIntoChunks(text: string, maxLength: number) {
+export function buildPlaybackQueueFromSources(
+  chapters: ChapterPlaybackSource[],
+  request: Required<Pick<TtsSpeakRequest, 'providerId' | 'voiceId' | 'speed'>> & Partial<TtsSpeakRequest>,
+  options: BuildQueueOptions = {}
+): PlaybackQueueItem[] {
+  const maxChunkLength = options.maxChunkLength ?? DEFAULT_MAX_CHUNK_LENGTH;
+  const firstChunkMaxLength = options.firstChunkMaxLength;
+  let order = options.startOrder ?? 0;
+
+  return chapters.flatMap((chapter, chapterIndex) => {
+    const chunks = splitTextIntoChunks(chapter.text, maxChunkLength, {
+      firstChunkMaxLength: chapterIndex === 0 ? firstChunkMaxLength : undefined
+    });
+    return chunks.map((chunk: string, chunkIndex: number) => ({
+      id: randomUUID(),
+      bookId: request.bookId,
+      chapterId: chapter.chapterId,
+      title: chapter.chapterTitle,
+      text: chunk,
+      providerId: request.providerId,
+      voiceId: request.voiceId,
+      speed: request.speed,
+      mode: request.mode,
+      fallbackProviderId: request.fallbackProviderId,
+      fallbackVoiceId: request.fallbackVoiceId,
+      order: order++,
+      chunkIndex,
+      chunkCount: chunks.length
+    } satisfies PlaybackQueueItem));
+  });
+}
+
+export function splitTextIntoChunks(
+  text: string,
+  maxLength: number,
+  options: { firstChunkMaxLength?: number } = {}
+): string[] {
   const normalized = text.replace(/\r\n/g, '\n').trim();
   if (normalized.length <= maxLength) {
     return [normalized];
+  }
+
+  const firstChunkMaxLength = options.firstChunkMaxLength;
+  if (firstChunkMaxLength && firstChunkMaxLength > 0 && normalized.length > firstChunkMaxLength) {
+    const initialChunks = splitTextIntoChunks(normalized, firstChunkMaxLength);
+    const [firstChunk, ...rest] = initialChunks;
+    const remainder = normalized.slice(firstChunk.length).trim();
+    return remainder
+      ? [firstChunk, ...splitTextIntoChunks(remainder, maxLength)]
+      : [firstChunk, ...rest];
   }
 
   const paragraphs = normalized.split(/\n{2,}/).map((item) => item.trim()).filter(Boolean);

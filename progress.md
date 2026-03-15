@@ -102,6 +102,31 @@
   - `src/renderer/app/AppShell.tsx` (updated)
   - `src/renderer/styles/app-shell.css` (updated)
 
+### Step 7: TTS 策略落地
+- **Status:** complete
+- Actions taken:
+  - 新增 `src/shared/tts-strategy.ts`，把标准 / 隐私 / 角色三种模式的默认 Provider、音色、迁移逻辑与播放请求构建统一收口。
+  - 扩展 `src/shared/types.ts`、`src/main/services/reader-state-schema.ts` 与 `src/main/services/reader-store-service.ts`，让 Reader Settings 可持久化三套模式配置，并继续兼容旧的 `defaultProviderId/defaultVoiceId`。
+  - 更新 `src/main/services/playback-service.ts` 与 `src/main/services/chapter-playback-queue.ts`，在云端 Provider 失败时把剩余播放队列切到本地兜底 Provider，并按兜底链路的切片上限保证继续可播。
+  - 更新 `src/main/services/tts-catalog-service.ts` 及相关 Provider 描述，把列表顺序和文案调整为云端优先、本地兜底。
+  - 重写 `src/renderer/hooks/useSettingsState.ts` 与 `src/renderer/pages/settings/TtsSettingsPage.tsx`，让设置页可编辑三种模式并用策略概览卡片明确远程首选 / 本地兜底。
+  - 更新 `src/renderer/hooks/useReaderPageState.ts` 与 `src/renderer/pages/book/BookDetailPage.tsx`，让详情页与阅读页的朗读入口统一走新策略请求构建器。
+- Files created/modified:
+  - `src/shared/tts-strategy.ts` (created)
+  - `src/shared/types.ts` (updated)
+  - `src/main/services/reader-state-schema.ts` (updated)
+  - `src/main/services/reader-store-service.ts` (updated)
+  - `src/main/services/chapter-playback-queue.ts` (updated)
+  - `src/main/services/playback-service.ts` (updated)
+  - `src/main/services/tts-catalog-service.ts` (updated)
+  - `src/main/adapters/openai-tts-adapter.ts` (updated)
+  - `src/main/adapters/cosyvoice-tts-adapter.ts` (updated)
+  - `src/main/adapters/system-tts-adapter.ts` (updated)
+  - `src/renderer/hooks/useSettingsState.ts` (updated)
+  - `src/renderer/pages/settings/TtsSettingsPage.tsx` (updated)
+  - `src/renderer/hooks/useReaderPageState.ts` (updated)
+  - `src/renderer/pages/book/BookDetailPage.tsx` (updated)
+
 ### Phase 1: Requirements & Discovery
 - **Status:** complete
 - **Started:** 2026-03-15
@@ -169,6 +194,7 @@
 | Step 5 lint 检查 | `npm run lint` | 验证全局播放器改动无 lint 错误 | 仍失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
 | Step 6 类型检查 | `npm run typecheck` | 新增 SettingsLayout、hook 与五个子页编译通过 | 通过 | ✓ |
 | Step 6 lint 检查 | `npm run lint` | 验证设置中心拆分改动无 lint 错误 | 仍失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
+| Step 7 类型检查 | `npm run typecheck` | 新增策略类型、主进程兜底逻辑与设置页模式编辑编译通过 | 通过 | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -181,8 +207,8 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | 已完成 Step 6：设置中心拆分 |
-| Where am I going? | Step 7：TTS 策略落地 |
+| Where am I? | 已完成 Step 7：TTS 策略落地 |
+| Where am I going? | Step 8：视觉系统与样式拆分 |
 | What's the goal? | 按执行手册逐步把单体阅读工作台拆成面向 C 端的多层页面结构 |
-| What have I learned? | 设置中心最适合通过统一状态层向各子页分发数据；这样既能避免重复请求，也方便下一步继续落地 TTS 策略 |
-| What have I done? | 已完成 Step 2 书库页、Step 3 详情页、Step 4 阅读器页、Step 5 全局播放器 Dock、Step 6 设置中心拆分与对应类型检查 |
+| What have I learned? | 云端优先策略如果要真实可用，必须把模式默认值、请求构建和播放失败后的剩余队列切换统一到同一套策略解析器里 |
+| What have I done? | 已完成 Step 2 书库页、Step 3 详情页、Step 4 阅读器页、Step 5 全局播放器 Dock、Step 6 设置中心拆分、Step 7 TTS 策略落地与对应类型检查 |

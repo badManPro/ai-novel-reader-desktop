@@ -9,12 +9,13 @@ const secureConfigService = new SecureConfigService();
 
 export const openAiTtsProvider: ModelProvider = {
   id: 'openai-tts',
-  name: 'OpenAI TTS',
+  name: 'OpenAI TTS (Recommended)',
   category: 'tts',
   kind: 'remote',
   requiresApiKey: true,
   configured: Boolean(process.env.OPENAI_API_KEY),
-  description: '真实 Provider 适配器示例：优先读取环境变量，也可从 SecureConfigService 文件回退配置加载。'
+  isPrimary: true,
+  description: '云端整章朗读推荐线路：优先走 OpenAI TTS，失败时可按策略切到本地兜底。'
 };
 
 export const openAiVoices: VoiceOption[] = [

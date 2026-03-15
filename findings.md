@@ -37,7 +37,10 @@
 - 设置页当前是骨架页，并未展示大状态面板，因此 Step 5 的“去重”重点落在阅读页而不是设置页；后续 Step 6 拆真实设置表单时应继续复用 Dock 而不是重新堆一份播放卡片。
 - Step 6 通过 `SettingsLayout + useSettingsState + Outlet context` 把设置中心真正拆成二级页面结构，而不是继续在 `SettingsPage` 里硬塞所有逻辑。
 - `TtsSettingsPage` 现在承接默认 Provider / 音色 / 倍速与试听，`ReadingSettingsPage` 承接字号 / 行高 / 主题，`OfflineSettingsPage` 承接健康检查与 `ModelManagementPanel`，`DataSettingsPage` 承接缓存与草稿队列，`AboutSettingsPage` 承接版本与产品说明。
-- 由于 Step 7 还未开始，本次没有修改共享类型里的 TTS 策略字段；设置页里只先把“模式预览”和当前默认配置摆正，为下一步的云端优先 / 本地兜底策略落地留位。
+- Step 7 新增了 `src/shared/tts-strategy.ts`，把旧 `defaultProviderId/defaultVoiceId` 向后兼容映射到 `standard/privacy/character` 三套配置，避免一次性改爆现有调用方。
+- `PlaybackService` 的兜底逻辑不能只在单次请求上切换 Provider；否则剩余队列仍会沿用失败的云端 Provider。当前实现会在首次失败后重写剩余队列，后续章节继续走本地兜底。
+- 云端优先策略下，播放队列切片长度必须同时兼容远程主线路与本地兜底线路；否则远程可接受的大文本片段会在本地链路上失效。当前已按“主线路上限 vs 兜底上限”的更小值建队。
+- 设置页当前通过“当前模式编辑 + 策略概览卡片”同时暴露主模式与三套配置，既能保持普通用户操作简单，也能明确远程首选与本地兜底边界。
 - 设置页已明确依赖全局 `PlayerDock` 查看播放状态，因此没有再重复嵌入一份大的播放态势面板。
 
 ## Technical Decisions
@@ -58,6 +61,9 @@
 | 用 `AppFrame -> AppShell/ReaderPage` 的两层结构承接全局 Dock | 这样既保留阅读页的沉浸布局，也能保证 Dock 跨页面共享 |
 | Step 6 使用 `Outlet context` 向设置子页透传状态，而不是为每个子页单独加载一遍 API 数据 | 避免重复请求与状态漂移，也让五个子页共享同一份保存/刷新动作 |
 | `ModelManagementPanel` 保持原组件不动，只迁移到“离线与模型”子页 | 该组件复杂度较高，先挪位置比重写更稳妥 |
+| Step 7 用共享 `tts-strategy` 解析器统一默认值、迁移逻辑与请求构建 | 避免 renderer / main / store 各自写一套模式判断，导致默认 Provider 和实际播放策略漂移 |
+| 标准模式默认走远程 Provider，但播放队列切片按远程与兜底本地的更小上限生成 | 这样云端失败后可直接切本地继续播放，不需要整队列重建 |
+| Provider 列表顺序改为远程优先，本地与系统 Provider 后置 | 让设置页文案和默认选择都与“云端优先，本地兜底”的产品路线一致 |
 
 ## Issues Encountered
 | Issue | Resolution |

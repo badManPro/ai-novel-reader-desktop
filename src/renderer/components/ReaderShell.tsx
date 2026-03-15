@@ -20,7 +20,7 @@ import type {
   TtsPlaybackStatus,
   VoiceOption
 } from '../../shared/types';
-import { buildContinuousChapterSequence, subscribePlaybackState } from '../lib/playback-events';
+import { subscribePlaybackState } from '../lib/playback-events';
 import { ModelManagementPanel } from './ModelManagementPanel';
 
 declare global {
@@ -420,22 +420,19 @@ export function ReaderShell() {
 
   async function saveCurrentDefaults() {
     const draftQueue = currentChapter && book
-      ? buildContinuousChapterSequence(book.chapters, currentChapter.id).flatMap((chapter, chapterIndex) => {
-          const chunks = splitTextIntoDrafts(chapter.text);
-          return chunks.map((text, chunkIndex) => ({
-            id: `draft-${chapter.chapterId}-${chunkIndex}`,
-            bookId: book.id,
-            chapterId: chapter.chapterId,
-            title: chapter.chapterTitle,
-            text,
-            providerId: selectedProviderId,
-            voiceId: selectedVoiceId,
-            speed: selectedSpeed,
-            order: chapterIndex * 1000 + chunkIndex,
-            chunkIndex,
-            chunkCount: chunks.length
-          }));
-        })
+      ? splitTextIntoDrafts(currentChapter.content).map((text, chunkIndex, chunks) => ({
+          id: `draft-${currentChapter.id}-${chunkIndex}`,
+          bookId: book.id,
+          chapterId: currentChapter.id,
+          title: currentChapter.title,
+          text,
+          providerId: selectedProviderId,
+          voiceId: selectedVoiceId,
+          speed: selectedSpeed,
+          order: chunkIndex,
+          chunkIndex,
+          chunkCount: chunks.length
+        }))
       : persistedState.playbackDraftQueue;
 
     await persistPatch({
@@ -459,7 +456,6 @@ export function ReaderShell() {
       return;
     }
 
-    const chapterSequence = buildContinuousChapterSequence(book.chapters, currentChapter.id);
     setTtsState({
       status: 'loading',
       phase: 'preparing',
@@ -476,8 +472,7 @@ export function ReaderShell() {
         bookId: book.id,
         chapterId: currentChapter.id,
         chapterTitle: currentChapter.title,
-        text: currentChapter.content,
-        chapterSequence
+        text: currentChapter.content
       });
       setTtsState((current) => ({ ...current, status: result.status, message: result.message }));
       await saveCurrentDefaults();

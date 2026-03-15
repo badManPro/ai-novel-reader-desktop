@@ -4,13 +4,15 @@ import type { PlaybackQueueItem, PlaybackProgressSnapshot, TtsPlaybackState, Tts
 import { synthesizeWithGlm } from '../adapters/glm-tts-adapter';
 import { synthesizeWithOpenAi } from '../adapters/openai-tts-adapter';
 import { buildSystemSayArgs, isMac } from '../adapters/system-tts-adapter';
-import { buildPlaybackQueue } from './chapter-playback-queue';
+import { buildPlaybackQueueFromSources, normalizeChapterSequence } from './chapter-playback-queue';
 import { canPrefetchAudio, DEFAULT_PREFETCH_AHEAD, getDynamicPrefetchAhead, getPrefetchWindow } from './playback-prefetch';
 import { PlaybackDiskCache } from './playback-disk-cache';
 import { OfflineTtsService, OfflineTtsServiceError } from './offline-tts-service';
 import { PlaybackEventBus } from './playback-event-bus';
 
 const LONG_TEXT_THRESHOLD = 6000;
+const LOCAL_MAX_CHUNK_LENGTH = 140;
+const LOCAL_FIRST_CHUNK_MAX_LENGTH = 80;
 
 export class PlaybackService {
   private playbackProcess: ChildProcessWithoutNullStreams | null = null;
@@ -29,6 +31,8 @@ export class PlaybackService {
   private readonly diskCache = new PlaybackDiskCache();
   private readonly audioCache = new Map<string, string>();
   private readonly pendingAudio = new Map<string, Promise<string>>();
+  private readonly localSynthesisLocks = new Map<string, Promise<void>>();
+  private expandingQueueVersion: number | null = null;
   private synthesisDurations: number[] = [];
   private playbackDurations: number[] = [];
   private cacheHits = 0;
@@ -41,23 +45,31 @@ export class PlaybackService {
   constructor(private readonly eventBus = new PlaybackEventBus()) {}
 
   getState() {
-    return this.playbackState;
+    return this.toPublicState(this.playbackState);
   }
 
   async speak(request: TtsSpeakRequest): Promise<TtsSpeakResult> {
     const speed = request.speed ?? 1;
+    const baseRequest = { ...request, speed };
+    const chapters = normalizeChapterSequence(baseRequest);
 
     await this.stop(true);
     this.resetSessionTelemetry();
-
-    await this.refreshCacheStats();
+    if (!chapters.length) {
+      throw new Error('朗读文本为空，无法开始播放。');
+    }
 
     this.setState({
       status: 'loading',
       phase: 'preparing',
       phaseLabel: '准备朗读',
+      mode: request.mode,
       providerId: request.providerId,
       voiceId: request.voiceId,
+      effectiveProviderId: request.providerId,
+      effectiveVoiceId: request.voiceId,
+      fallbackUsed: false,
+      fallbackReason: undefined,
       speed,
       queue: [],
       currentItem: undefined,
@@ -92,7 +104,14 @@ export class PlaybackService {
         : '正在准备朗读任务…'
     });
 
-    const queue = buildPlaybackQueue({ ...request, speed });
+    const queue = buildPlaybackQueueFromSources(
+      chapters.slice(0, 1),
+      baseRequest,
+      {
+        maxChunkLength: this.getQueueMaxChunkLength(request.providerId, request.fallbackProviderId),
+        firstChunkMaxLength: canPrefetchAudio(request.providerId) ? LOCAL_FIRST_CHUNK_MAX_LENGTH : undefined
+      }
+    );
     const currentItem = queue[0];
     if (!currentItem) {
       throw new Error('朗读文本为空，无法开始播放。');
@@ -102,6 +121,12 @@ export class PlaybackService {
     this.audioCache.clear();
     this.pendingAudio.clear();
     this.queueVersion += 1;
+    const version = this.queueVersion;
+    void this.refreshCacheStats().then(() => {
+      if (version === this.queueVersion) {
+        this.publishPrefetchState();
+      }
+    });
     const chapterCount = new Set(queue.map((item) => item.chapterId ?? item.id)).size;
     const totalChars = this.totalChars();
     const playbackMode = canPrefetchAudio(request.providerId) ? 'prefetch' : 'serial';
@@ -142,8 +167,8 @@ export class PlaybackService {
         playbackMode
       },
       message: totalChars >= LONG_TEXT_THRESHOLD
-        ? `已切成 ${queue.length} 段，将优先生成首段并按动态窗口后台预取后续音频。`
-        : `已完成切片，共 ${chapterCount} 章 / ${queue.length} 段，正在生成首段音频。`
+        ? `已优先准备当前章节 ${queue.length} 段，将先播首段，剩余章节后台继续补充队列。`
+        : `已完成当前章节切片，共 ${chapterCount} 章 / ${queue.length} 段，正在生成首段音频。`
     });
 
     if (playbackMode === 'prefetch') {
@@ -155,11 +180,21 @@ export class PlaybackService {
       void this.getOrCreateAudio(currentItem, this.queueVersion).catch(() => undefined);
     }
 
+    if (chapters.length > 1) {
+      this.expandingQueueVersion = version;
+      void this.appendRemainingChapters(chapters.slice(1), baseRequest, version);
+    } else {
+      this.expandingQueueVersion = null;
+    }
+
     void this.playQueue(this.queueVersion);
     return {
       status: this.playbackState.status,
       providerId: request.providerId,
       voiceId: request.voiceId,
+      effectiveProviderId: this.playbackState.effectiveProviderId ?? this.playbackState.providerId ?? request.providerId,
+      effectiveVoiceId: this.playbackState.effectiveVoiceId ?? this.playbackState.voiceId ?? request.voiceId,
+      fallbackUsed: this.playbackState.fallbackUsed,
       message: this.playbackState.message
     };
   }
@@ -188,6 +223,7 @@ export class PlaybackService {
 
   async stop(silent = false) {
     this.queueVersion += 1;
+    this.expandingQueueVersion = null;
     const currentProcess = this.playbackProcess;
     this.playbackProcess = null;
 
@@ -202,15 +238,30 @@ export class PlaybackService {
       status: 'idle',
       phase: 'idle',
       phaseLabel: '空闲',
+      mode: undefined,
       queue: [],
       currentItem: undefined,
+      providerId: undefined,
+      voiceId: undefined,
+      effectiveProviderId: undefined,
+      effectiveVoiceId: undefined,
+      fallbackUsed: false,
+      fallbackReason: undefined,
       progress: undefined,
       message: silent ? '已清空当前自动续播队列。' : '朗读已停止。'
     });
   }
 
   private async playQueue(version: number) {
-    while (version === this.queueVersion && this.playbackState.queue.length > 0) {
+    while (version === this.queueVersion) {
+      if (this.playbackState.queue.length === 0) {
+        if (this.expandingQueueVersion === version) {
+          await new Promise((resolve) => setTimeout(resolve, 120));
+          continue;
+        }
+        break;
+      }
+
       const [currentItem, ...restQueue] = this.playbackState.queue;
       if (!currentItem) {
         break;
@@ -250,15 +301,20 @@ export class PlaybackService {
         return;
       }
 
+      const latestQueue = this.playbackState.queue;
+      const currentIndex = latestQueue.findIndex((entry) => entry.id === currentItem.id);
+      const normalizedRestQueue = currentIndex >= 0
+        ? latestQueue.slice(currentIndex + 1)
+        : latestQueue.filter((entry) => entry.order > currentItem.order);
       const finishedChars = this.completedChars(currentItem.order + 1);
-      const nextItem = restQueue[0];
+      const nextItem = normalizedRestQueue[0];
       const chapterChanged = nextItem && nextItem.chapterId !== currentItem.chapterId;
       this.setState({
-        status: restQueue.length ? 'loading' : 'idle',
-        phase: restQueue.length ? 'prefetching-audio' : 'completed',
-        phaseLabel: restQueue.length ? '后台预取中' : '播放完成',
+        status: normalizedRestQueue.length ? 'loading' : 'idle',
+        phase: normalizedRestQueue.length ? 'prefetching-audio' : 'completed',
+        phaseLabel: normalizedRestQueue.length ? '后台预取中' : '播放完成',
         currentItem: nextItem,
-        queue: restQueue,
+        queue: normalizedRestQueue,
         progress: nextItem
           ? this.buildProgress(nextItem, finishedChars)
           : this.playbackState.progress
@@ -271,12 +327,68 @@ export class PlaybackService {
                 pendingPrefetchChunks: 0
               }
             : undefined,
-        message: restQueue.length
+        message: normalizedRestQueue.length
           ? chapterChanged
             ? `章节《${currentItem.title}》完成，已切到下一章《${nextItem.title}》，后台继续按动态窗口预取音频。`
             : `第 ${currentItem.chunkIndex + 1}/${currentItem.chunkCount} 段完成，优先消费已缓存音频并继续后台生成。`
           : '自动续播队列已全部完成。'
       });
+    }
+  }
+
+  private async appendRemainingChapters(
+    chapters: ReturnType<typeof normalizeChapterSequence>,
+    request: Required<Pick<TtsSpeakRequest, 'providerId' | 'voiceId' | 'speed'>> & Partial<TtsSpeakRequest>,
+    version: number
+  ) {
+    try {
+      let nextOrder = this.sourceQueue.length;
+      for (const chapter of chapters) {
+        if (version !== this.queueVersion) {
+          return;
+        }
+
+        const items = buildPlaybackQueueFromSources([chapter], request, {
+          startOrder: nextOrder,
+          maxChunkLength: this.getQueueMaxChunkLength(request.providerId, request.fallbackProviderId)
+        });
+        nextOrder += items.length;
+        this.sourceQueue = [...this.sourceQueue, ...items];
+
+        const currentProgress = this.playbackState.progress;
+        this.setState({
+          queue: [...this.playbackState.queue, ...items],
+          progress: currentProgress
+            ? {
+                ...currentProgress,
+                charLength: this.totalChars(),
+                totalChunks: this.sourceQueue.length,
+                totalChapters: this.totalChapters(),
+                isLongText: this.totalChars() >= LONG_TEXT_THRESHOLD,
+                longTextHint: this.getLongTextHint(this.totalChars())
+              }
+            : undefined,
+          message: this.playbackState.status === 'reading'
+            ? this.playbackState.message
+            : `已加载章节《${chapter.chapterTitle}》到自动续播队列，正在继续准备后续内容。`
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    } finally {
+      if (version === this.queueVersion && this.expandingQueueVersion === version) {
+        this.expandingQueueVersion = null;
+        if (this.playbackState.progress) {
+          this.setState({
+            progress: {
+              ...this.playbackState.progress,
+              totalChunks: this.sourceQueue.length,
+              totalChapters: this.totalChapters(),
+              charLength: this.totalChars()
+            }
+          });
+        }
+      }
     }
   }
 
@@ -303,7 +415,8 @@ export class PlaybackService {
     }
 
     this.playbackProcess = child;
-    if (canPrefetchAudio(item.providerId)) {
+    const resolvedItem = this.playbackState.queue.find((entry) => entry.id === item.id) ?? item;
+    if (canPrefetchAudio(resolvedItem.providerId)) {
       this.schedulePrefetch(version, item.order);
     }
 
@@ -311,14 +424,16 @@ export class PlaybackService {
       status: 'reading',
       phase: 'playing',
       phaseLabel: '播放中',
-      providerId: item.providerId,
-      voiceId: item.voiceId,
-      speed: item.speed,
-      currentItem: item,
-      progress: this.buildProgress(item, this.completedChars(item.order)),
-      message: canPrefetchAudio(item.providerId)
-        ? `正在播放第 ${item.order + 1}/${this.sourceQueue.length} 段，后台按动态窗口继续预取音频。`
-        : `正在播放第 ${item.order + 1}/${this.sourceQueue.length} 段（章内 ${item.chunkIndex + 1}/${item.chunkCount}）：${item.title}`
+      providerId: resolvedItem.providerId,
+      voiceId: resolvedItem.voiceId,
+      effectiveProviderId: resolvedItem.providerId,
+      effectiveVoiceId: resolvedItem.voiceId,
+      speed: resolvedItem.speed,
+      currentItem: resolvedItem,
+      progress: this.buildProgress(resolvedItem, this.completedChars(resolvedItem.order)),
+      message: canPrefetchAudio(resolvedItem.providerId)
+        ? `正在播放第 ${resolvedItem.order + 1}/${this.sourceQueue.length} 段，后台按动态窗口继续预取音频。`
+        : `正在播放第 ${resolvedItem.order + 1}/${this.sourceQueue.length} 段（章内 ${resolvedItem.chunkIndex + 1}/${resolvedItem.chunkCount}）：${resolvedItem.title}`
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -427,14 +542,41 @@ export class PlaybackService {
       return synthesized.audioPath;
     }
 
-    const stored = await this.diskCache.put(item, synthesized.audioPath, synthesized.extension ?? path.extname(synthesized.audioPath));
+    const stored = await this.diskCache.put(
+      synthesized.cacheItem ?? item,
+      synthesized.audioPath,
+      synthesized.extension ?? path.extname(synthesized.audioPath)
+    );
     this.applyCacheCollectionStats(stored.collection);
     return stored.audioPath;
   }
 
-  private async synthesizeAudioFile(item: PlaybackQueueItem): Promise<{ audioPath: string; extension?: string }> {
+  private async synthesizeAudioFile(item: PlaybackQueueItem): Promise<{ audioPath: string; extension?: string; cacheItem?: PlaybackQueueItem }> {
+    try {
+      const result = await this.synthesizeAudioFileForProvider(item);
+      return {
+        ...result,
+        cacheItem: item
+      };
+    } catch (error) {
+      const fallbackItem = this.buildFallbackItem(item);
+      if (!fallbackItem) {
+        throw error;
+      }
+
+      const fallbackReason = this.buildFallbackReason(item, fallbackItem, error);
+      this.applyFallbackToQueue(item, fallbackItem, fallbackReason);
+      const fallbackResult = await this.synthesizeAudioFileForProvider(fallbackItem);
+      return {
+        ...fallbackResult,
+        cacheItem: fallbackItem
+      };
+    }
+  }
+
+  private async synthesizeAudioFileForProvider(item: PlaybackQueueItem): Promise<{ audioPath: string; extension?: string }> {
     if (item.providerId === 'cosyvoice-local' || item.providerId === 'gpt-sovits-local') {
-      const result = await this.offlineTtsService.synthesize({
+      const result = await this.runSerializedLocalSynthesis(item.providerId, async () => this.offlineTtsService.synthesize({
         providerId: item.providerId,
         voiceId: item.voiceId,
         speed: item.speed,
@@ -442,7 +584,7 @@ export class PlaybackService {
         chapterId: item.chapterId,
         chapterTitle: item.title,
         bookId: item.bookId
-      });
+      }));
       return {
         audioPath: result.audioPath,
         extension: path.extname(result.audioPath) || '.wav'
@@ -474,6 +616,95 @@ export class PlaybackService {
     }
 
     throw new Error(`当前 provider 不支持音频预取：${item.providerId}`);
+  }
+
+  private getMaxChunkLength(providerId: string) {
+    if (providerId === 'cosyvoice-local' || providerId === 'gpt-sovits-local') {
+      return LOCAL_MAX_CHUNK_LENGTH;
+    }
+
+    return undefined;
+  }
+
+  private getQueueMaxChunkLength(providerId: string, fallbackProviderId?: string) {
+    const primaryLimit = this.getMaxChunkLength(providerId);
+    const fallbackLimit = fallbackProviderId ? this.getMaxChunkLength(fallbackProviderId) : undefined;
+    if (primaryLimit && fallbackLimit) {
+      return Math.min(primaryLimit, fallbackLimit);
+    }
+    return primaryLimit ?? fallbackLimit;
+  }
+
+  private buildFallbackItem(item: PlaybackQueueItem): PlaybackQueueItem | null {
+    if (!item.fallbackProviderId || item.fallbackProviderId === item.providerId) {
+      return null;
+    }
+
+    return {
+      ...item,
+      providerId: item.fallbackProviderId,
+      voiceId: item.fallbackVoiceId ?? item.voiceId,
+      fallbackProviderId: undefined,
+      fallbackVoiceId: undefined
+    };
+  }
+
+  private buildFallbackReason(item: PlaybackQueueItem, fallbackItem: PlaybackQueueItem, error: unknown) {
+    const errorText = error instanceof Error ? error.message : '未知错误';
+    return `主线路 ${item.providerId} 不可用，已切换到本地兜底 ${fallbackItem.providerId}：${errorText}`;
+  }
+
+  private applyFallbackToQueue(currentItem: PlaybackQueueItem, fallbackItem: PlaybackQueueItem, fallbackReason: string) {
+    const rewrite = (entry: PlaybackQueueItem) => entry.order < currentItem.order
+      ? entry
+      : {
+          ...entry,
+          providerId: fallbackItem.providerId,
+          voiceId: fallbackItem.voiceId,
+          fallbackProviderId: undefined,
+          fallbackVoiceId: undefined
+        };
+
+    this.audioCache.clear();
+    this.pendingAudio.clear();
+    this.sourceQueue = this.sourceQueue.map(rewrite);
+
+    const nextQueue = this.playbackState.queue.map(rewrite);
+    const nextCurrentItem = nextQueue.find((entry) => entry.id === currentItem.id) ?? fallbackItem;
+
+    this.setState({
+      queue: nextQueue,
+      currentItem: nextCurrentItem,
+      providerId: fallbackItem.providerId,
+      voiceId: fallbackItem.voiceId,
+      effectiveProviderId: fallbackItem.providerId,
+      effectiveVoiceId: fallbackItem.voiceId,
+      fallbackUsed: true,
+      fallbackReason,
+      phase: 'generating-audio',
+      phaseLabel: '切换本地兜底',
+      message: fallbackReason
+    });
+  }
+
+  private async runSerializedLocalSynthesis<T>(providerId: string, task: () => Promise<T>) {
+    const previous = this.localSynthesisLocks.get(providerId) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const chained = previous.catch(() => undefined).then(() => current);
+    this.localSynthesisLocks.set(providerId, chained);
+
+    await previous.catch(() => undefined);
+    try {
+      return await task();
+    } finally {
+      release();
+      if (this.localSynthesisLocks.get(providerId) === chained) {
+        this.localSynthesisLocks.delete(providerId);
+      }
+    }
   }
 
   private schedulePrefetch(version: number, currentOrder: number) {
@@ -636,8 +867,23 @@ export class PlaybackService {
       };
     }
 
-    this.eventBus.publish(this.playbackState);
+    this.eventBus.publish(this.toPublicState(this.playbackState));
     return this.playbackState;
+  }
+
+  private toPublicState(state: TtsPlaybackState): TtsPlaybackState {
+    return {
+      ...state,
+      currentItem: state.currentItem ? this.toPublicQueueItem(state.currentItem) : undefined,
+      queue: state.queue.map((item) => this.toPublicQueueItem(item))
+    };
+  }
+
+  private toPublicQueueItem(item: PlaybackQueueItem): PlaybackQueueItem {
+    return {
+      ...item,
+      text: ''
+    };
   }
 
   private getPlaybackErrorMessage(error: unknown) {

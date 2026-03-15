@@ -4,7 +4,7 @@
 基于当前项目真实代码结构，输出一份面向 C 端产品化的详细改造重构文档，明确“云端 TTS 主朗读、本地模型离线兜底”的产品路线，以及页面层级、信息架构、技术拆分和实施阶段。
 
 ## Current Phase
-Phase 11
+Phase 12
 
 ## Phases
 
@@ -74,9 +74,15 @@ Phase 11
 - **Status:** complete
 
 ### Phase 11: Step 7 Preparation
-- [ ] 进入 Step 7：TTS 策略落地
-- [ ] 在共享类型与设置页中引入标准 / 隐私 / 角色模式
-- [ ] 明确远程首选 Provider 与本地兜底 Provider 的策略边界
+- [x] 进入 Step 7：TTS 策略落地
+- [x] 在共享类型与设置页中引入标准 / 隐私 / 角色模式
+- [x] 明确远程首选 Provider 与本地兜底 Provider 的策略边界
+- **Status:** complete
+
+### Phase 12: Step 8 Preparation
+- [ ] 进入 Step 8：视觉系统与样式拆分
+- [ ] 将当前页面样式从单文件继续拆成 tokens / layout / page-level styles
+- [ ] 统一书库、详情、阅读、设置和 Dock 的视觉基线
 - **Status:** pending
 
 ## Key Questions
@@ -105,4 +111,6 @@ Phase 11
 - Step 4 已完成，新 `ReaderPage` 已由路由参数驱动，只保留正文、章节抽屉和播放状态，不再复用旧 `ReaderShell`。
 - Step 5 已完成，所有一级页面都共享 `PlayerDock`，阅读页内不再重复挂一套完整播放器。
 - Step 6 已完成，设置中心已拆成五个真实子页，并通过统一状态层共享数据与保存动作。
+- Step 7 已完成，设置中心已引入标准 / 隐私 / 角色三种模式，默认策略切到云端优先，本地兜底。
+- `PlaybackService` 现在会在云端 Provider 失败时重写剩余播放队列并切换到本地兜底 Provider，同时按兜底 Provider 的切片上限构建队列，避免本地链路接收过长文本片段。
 - `npm run lint` 受限于仓库缺少 ESLint v9 flat config，后续如需 lint 需先补配置。

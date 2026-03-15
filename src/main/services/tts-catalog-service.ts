@@ -20,7 +20,7 @@ export class TtsCatalogService {
     const configuredProviders = new Set(snapshot.providers.filter((item) => Boolean(item.apiKey)).map((item) => item.providerId));
     const healthyProviders = new Set(healthList.filter((item) => item.status === 'healthy').map((item) => item.providerId));
 
-    return [cosyVoiceProvider, gptSovitsProvider, systemTtsProvider, openAiTtsProvider, glmTtsProvider].map((provider) => ({
+    return [openAiTtsProvider, glmTtsProvider, cosyVoiceProvider, systemTtsProvider, gptSovitsProvider].map((provider) => ({
       ...provider,
       configured: provider.kind === 'remote'
         ? configuredProviders.has(provider.id)

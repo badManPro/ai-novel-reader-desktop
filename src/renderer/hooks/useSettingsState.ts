@@ -11,10 +11,13 @@ import type {
   OfflineModelTaskSnapshot,
   OfflineServiceStatus,
   ReaderPersistedState,
+  ReaderSettings,
   ReaderTheme,
+  TtsMode,
   TtsPlaybackState,
   VoiceOption
 } from '../../shared/types';
+import { buildTtsSpeakRequest, normalizeReaderSettings, resolveTtsStrategySettings } from '../../shared/tts-strategy';
 import { subscribePlaybackState } from '../lib/playback-events';
 import { formatBytes, getPlaybackMetrics } from '../lib/playback-metrics';
 
@@ -29,14 +32,21 @@ const fallbackState: ReaderPersistedState = {
   recentBookId: null,
   progress: {},
   readingPositions: {},
-  settings: {
-    defaultProviderId: 'cosyvoice-local',
-    defaultVoiceId: '中文女',
+  settings: normalizeReaderSettings({
+    ttsMode: 'standard',
+    standardProviderId: 'openai-tts',
+    standardVoiceId: 'alloy',
+    privacyProviderId: 'cosyvoice-local',
+    privacyVoiceId: '中文女',
+    characterProviderId: 'gpt-sovits-local',
+    characterVoiceId: 'gpt-sovits-default',
+    defaultProviderId: 'openai-tts',
+    defaultVoiceId: 'alloy',
     defaultSpeed: 1,
     fontSize: 18,
     lineHeight: 1.9,
     theme: 'dark'
-  },
+  }),
   playbackDraftQueue: []
 };
 
@@ -45,13 +55,57 @@ export const fontSizeOptions = [16, 18, 20, 22, 24];
 export const lineHeightOptions = [1.7, 1.9, 2.1, 2.3];
 export const themeOptions: ReaderTheme[] = ['dark', 'sepia', 'light'];
 
+function getProvidersForMode(mode: TtsMode, providers: ModelProvider[]) {
+  if (mode === 'standard') {
+    return providers.filter((provider) => provider.kind === 'remote');
+  }
+
+  if (mode === 'privacy') {
+    return providers.filter((provider) => provider.kind === 'local' || provider.kind === 'system');
+  }
+
+  return providers.filter((provider) => provider.kind === 'local');
+}
+
+function buildSettingsFromDrafts(
+  baseSettings: ReaderSettings,
+  mode: TtsMode,
+  drafts: Record<TtsMode, { providerId: string; voiceId: string }>,
+  speed: number
+) {
+  return normalizeReaderSettings({
+    ...baseSettings,
+    ttsMode: mode,
+    defaultSpeed: speed,
+    standardProviderId: drafts.standard.providerId,
+    standardVoiceId: drafts.standard.voiceId,
+    privacyProviderId: drafts.privacy.providerId,
+    privacyVoiceId: drafts.privacy.voiceId,
+    characterProviderId: drafts.character.providerId,
+    characterVoiceId: drafts.character.voiceId
+  });
+}
+
 export function useSettingsState() {
   const api = window.novelReader;
   const [persistedState, setPersistedState] = useState<ReaderPersistedState>(fallbackState);
   const [providers, setProviders] = useState<ModelProvider[]>([]);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
-  const [selectedProviderId, setSelectedProviderId] = useState<string>(fallbackState.settings.defaultProviderId);
-  const [selectedVoiceId, setSelectedVoiceId] = useState<string>(fallbackState.settings.defaultVoiceId);
+  const [selectedMode, setSelectedMode] = useState<TtsMode>(fallbackState.settings.ttsMode ?? 'standard');
+  const [draftProfiles, setDraftProfiles] = useState<Record<TtsMode, { providerId: string; voiceId: string }>>({
+    standard: {
+      providerId: fallbackState.settings.standardProviderId ?? 'openai-tts',
+      voiceId: fallbackState.settings.standardVoiceId ?? 'alloy'
+    },
+    privacy: {
+      providerId: fallbackState.settings.privacyProviderId ?? 'cosyvoice-local',
+      voiceId: fallbackState.settings.privacyVoiceId ?? '中文女'
+    },
+    character: {
+      providerId: fallbackState.settings.characterProviderId ?? 'gpt-sovits-local',
+      voiceId: fallbackState.settings.characterVoiceId ?? 'gpt-sovits-default'
+    }
+  });
   const [selectedSpeed, setSelectedSpeed] = useState<number>(fallbackState.settings.defaultSpeed);
   const [offlineHealth, setOfflineHealth] = useState<OfflineEngineHealth[]>([]);
   const [offlineServiceStatus, setOfflineServiceStatus] = useState<OfflineServiceStatus[]>([]);
@@ -66,11 +120,20 @@ export function useSettingsState() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const settings = persistedState.settings;
+  const resolvedStrategy = useMemo(() => resolveTtsStrategySettings(settings), [settings]);
   const playbackMetrics = getPlaybackMetrics(ttsState);
   const recentBook = useMemo(
     () => persistedState.bookshelf.find((item) => item.id === persistedState.recentBookId) ?? persistedState.bookshelf[0] ?? null,
     [persistedState.bookshelf, persistedState.recentBookId]
   );
+  const selectedProfile = draftProfiles[selectedMode];
+  const selectedProviderId = selectedProfile?.providerId ?? resolvedStrategy.active.providerId;
+  const selectedVoiceId = selectedProfile?.voiceId ?? resolvedStrategy.active.voiceId;
+  const draftStrategy = useMemo(
+    () => resolveTtsStrategySettings(buildSettingsFromDrafts(settings, selectedMode, draftProfiles, selectedSpeed)),
+    [draftProfiles, selectedMode, selectedSpeed, settings]
+  );
+  const modeProviders = useMemo(() => getProvidersForMode(selectedMode, providers), [providers, selectedMode]);
   const currentProvider = providers.find((provider) => provider.id === selectedProviderId);
 
   useEffect(() => {
@@ -81,8 +144,6 @@ export function useSettingsState() {
 
     void api.loadReaderState().then((state) => {
       setPersistedState(state);
-      setSelectedProviderId(state.settings.defaultProviderId);
-      setSelectedVoiceId(state.settings.defaultVoiceId);
       setSelectedSpeed(state.settings.defaultSpeed);
     });
     void api.getTtsProviders().then((providerList) => setProviders(providerList));
@@ -93,6 +154,49 @@ export function useSettingsState() {
   }, [api]);
 
   useEffect(() => {
+    const strategy = resolveTtsStrategySettings(settings);
+    setSelectedMode(strategy.mode);
+    setDraftProfiles({
+      standard: strategy.standard,
+      privacy: strategy.privacy,
+      character: strategy.character
+    });
+  }, [
+    settings.ttsMode,
+    settings.standardProviderId,
+    settings.standardVoiceId,
+    settings.privacyProviderId,
+    settings.privacyVoiceId,
+    settings.characterProviderId,
+    settings.characterVoiceId,
+    settings.defaultProviderId,
+    settings.defaultVoiceId
+  ]);
+
+  useEffect(() => {
+    if (!modeProviders.length) {
+      return;
+    }
+
+    if (modeProviders.some((provider) => provider.id === selectedProviderId)) {
+      return;
+    }
+
+    const nextProviderId = modeProviders[0]?.id;
+    if (!nextProviderId) {
+      return;
+    }
+
+    setDraftProfiles((current) => ({
+      ...current,
+      [selectedMode]: {
+        ...current[selectedMode],
+        providerId: nextProviderId
+      }
+    }));
+  }, [modeProviders, selectedMode, selectedProviderId]);
+
+  useEffect(() => {
     if (!api || !selectedProviderId) {
       return;
     }
@@ -100,13 +204,29 @@ export function useSettingsState() {
     void api.getVoices(selectedProviderId).then((voiceList) => {
       setVoices(voiceList);
       const fallbackVoiceId = voiceList[0]?.id ?? '';
-      setSelectedVoiceId((current) => voiceList.some((voice) => voice.id === current)
-        ? current
-        : settings.defaultProviderId === selectedProviderId && settings.defaultVoiceId
-          ? settings.defaultVoiceId
-          : fallbackVoiceId);
+      setDraftProfiles((current) => {
+        const nextProfile = current[selectedMode];
+        if (!nextProfile || nextProfile.providerId !== selectedProviderId) {
+          return current;
+        }
+
+        const nextVoiceId = voiceList.some((voice) => voice.id === nextProfile.voiceId)
+          ? nextProfile.voiceId
+          : fallbackVoiceId;
+        if (nextVoiceId === nextProfile.voiceId) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [selectedMode]: {
+            ...nextProfile,
+            voiceId: nextVoiceId
+          }
+        };
+      });
     });
-  }, [api, selectedProviderId, settings.defaultProviderId, settings.defaultVoiceId]);
+  }, [api, selectedMode, selectedProviderId]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -127,23 +247,43 @@ export function useSettingsState() {
 
   async function persistSettingsPatch(settingsPatch: Partial<ReaderPersistedState['settings']>) {
     return persistPatch({
-      settings: {
+      settings: normalizeReaderSettings({
         ...persistedState.settings,
         ...settingsPatch
-      }
+      })
     });
   }
 
-  async function saveTtsDefaults() {
-    await persistPatch({
-      settings: {
-        ...persistedState.settings,
-        defaultProviderId: selectedProviderId,
-        defaultVoiceId: selectedVoiceId,
-        defaultSpeed: selectedSpeed
+  function selectMode(mode: TtsMode) {
+    setSelectedMode(mode);
+  }
+
+  function selectProvider(providerId: string) {
+    setDraftProfiles((current) => ({
+      ...current,
+      [selectedMode]: {
+        ...current[selectedMode],
+        providerId
       }
+    }));
+  }
+
+  function selectVoice(voiceId: string) {
+    setDraftProfiles((current) => ({
+      ...current,
+      [selectedMode]: {
+        ...current[selectedMode],
+        voiceId
+      }
+    }));
+  }
+
+  async function saveTtsDefaults() {
+    const nextSettings = buildSettingsFromDrafts(persistedState.settings, selectedMode, draftProfiles, selectedSpeed);
+    await persistPatch({
+      settings: nextSettings
     });
-    setActionMessage('默认朗读配置已保存。');
+    setActionMessage('默认朗读策略已保存。');
   }
 
   async function previewTts() {
@@ -152,13 +292,21 @@ export function useSettingsState() {
     }
 
     try {
-      const result = await api.speak({
-        providerId: selectedProviderId,
-        voiceId: selectedVoiceId,
-        speed: selectedSpeed,
+      const draftSettings = buildSettingsFromDrafts(persistedState.settings, selectedMode, draftProfiles, selectedSpeed);
+      const result = await api.speak(buildTtsSpeakRequest({
         text: '这是一段用于设置页试听的示例文本，用来确认当前音色和语速是否符合预期。'
-      });
-      setTtsState((current) => ({ ...current, status: result.status, message: result.message }));
+      }, draftSettings));
+      setTtsState((current) => ({
+        ...current,
+        status: result.status,
+        mode: draftSettings.ttsMode,
+        providerId: result.providerId,
+        voiceId: result.voiceId,
+        effectiveProviderId: result.effectiveProviderId ?? result.providerId,
+        effectiveVoiceId: result.effectiveVoiceId ?? result.voiceId,
+        fallbackUsed: result.fallbackUsed,
+        message: result.message
+      }));
       setActionMessage('已触发当前配置试听，可通过底部 Player Dock 查看播放状态。');
     } catch (error) {
       setNotices([error instanceof Error ? error.message : '试听失败，请重试。']);
@@ -282,14 +430,20 @@ export function useSettingsState() {
   return {
     api,
     providers,
+    modeProviders,
     voices,
+    selectedMode,
     selectedProviderId,
     selectedVoiceId,
     selectedSpeed,
-    setSelectedProviderId,
-    setSelectedVoiceId,
+    setSelectedMode: selectMode,
+    setSelectedProviderId: selectProvider,
+    setSelectedVoiceId: selectVoice,
     setSelectedSpeed,
     settings,
+    resolvedStrategy,
+    draftStrategy,
+    draftProfiles,
     persistedState,
     recentBook,
     currentProvider,

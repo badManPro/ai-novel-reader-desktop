@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ChapterPlaybackSource } from '../../../shared/types';
+import { buildTtsSpeakRequest, resolveTtsStrategySettings, TTS_MODE_LABELS } from '../../../shared/tts-strategy';
 import { BookChapterList } from '../../components/book/BookChapterList';
 import { BookHero } from '../../components/book/BookHero';
 import { useLibraryState } from '../../hooks/useLibraryState';
@@ -28,6 +29,7 @@ export function BookDetailPage() {
     [bookId, bookshelf]
   );
   const progressChapter = book ? getBookProgressChapter(book) : null;
+  const ttsStrategy = resolveTtsStrategySettings(persistedState.settings);
 
   useEffect(() => {
     if (!book) {
@@ -72,16 +74,13 @@ export function BookDetailPage() {
       order: chapter.order
     }));
 
-    await api.speak({
-      providerId: persistedState.settings.defaultProviderId,
-      voiceId: persistedState.settings.defaultVoiceId,
-      speed: persistedState.settings.defaultSpeed,
+    await api.speak(buildTtsSpeakRequest({
       text: currentChapter.content,
       chapterId: currentChapter.id,
       chapterTitle: currentChapter.title,
       bookId: book.id,
       chapterSequence
-    });
+    }, persistedState.settings));
 
     navigate(`/reader/${book.id}/${currentChapter.id}`);
   }
@@ -176,8 +175,8 @@ export function BookDetailPage() {
               <strong>{`/reader/${book.id}/${currentChapter?.id ?? book.chapters[0]?.id ?? 'chapter-1'}`}</strong>
             </div>
             <div>
-              <span className="route-page-kicker">Cloud-first</span>
-              <strong>{persistedState.settings.defaultProviderId}</strong>
+              <span className="route-page-kicker">Current Strategy</span>
+              <strong>{TTS_MODE_LABELS[ttsStrategy.mode]} / {ttsStrategy.active.providerId}</strong>
             </div>
             <div>
               <span className="route-page-kicker">Voice</span>

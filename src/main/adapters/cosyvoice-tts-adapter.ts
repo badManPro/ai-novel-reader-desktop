@@ -2,12 +2,12 @@ import type { ModelProvider, VoiceOption } from '../../shared/types';
 
 export const cosyVoiceProvider: ModelProvider = {
   id: 'cosyvoice-local',
-  name: 'CosyVoice 300M SFT Local',
+  name: 'CosyVoice Local Fallback',
   category: 'tts',
   kind: 'local',
   configured: true,
-  isPrimary: true,
-  description: '离线主引擎：优先走 CosyVoice 官方 /inference_sft + speaker-id 朗读链路。'
+  isPrimary: false,
+  description: '本地隐私与离线兜底线路：适合无网、隐私优先和云端失败时继续朗读。'
 };
 
 export const cosyVoiceVoices: VoiceOption[] = [

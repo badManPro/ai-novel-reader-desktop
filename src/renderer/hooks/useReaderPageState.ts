@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Book, Chapter, ModelProvider, NovelReaderApi, TtsPlaybackState, VoiceOption } from '../../shared/types';
+import { buildTtsSpeakRequest } from '../../shared/tts-strategy';
 import { subscribePlaybackState, buildContinuousChapterSequence } from '../lib/playback-events';
 import { getPlaybackMetrics, getPlaybackStateSummary, getPlaybackTimeline } from '../lib/playback-metrics';
 import { useLibraryState } from './useLibraryState';
@@ -121,16 +122,13 @@ export function useReaderPageState(bookId: string | undefined, chapterId: string
 
     try {
       await saveBookProgress(book.id, targetChapter.id);
-      const result = await api.speak({
-        providerId: settings.defaultProviderId,
-        voiceId: settings.defaultVoiceId,
-        speed: settings.defaultSpeed,
+      const result = await api.speak(buildTtsSpeakRequest({
         bookId: book.id,
         chapterId: targetChapter.id,
         chapterTitle: targetChapter.title,
         text: targetChapter.content,
         chapterSequence: buildContinuousChapterSequence(book.chapters, targetChapter.id)
-      });
+      }, settings));
       setTtsState((current) => ({ ...current, status: result.status, message: result.message }));
       return true;
     } catch (error) {

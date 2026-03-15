@@ -11,6 +11,7 @@ import type {
   ReadingPositionMap,
   ReadingProgressMap
 } from '../../shared/types';
+import { normalizeReaderSettings } from '../../shared/tts-strategy';
 import { createMigratedReaderState, defaultReaderState, mergeReaderState } from './reader-state-schema';
 
 const SETTINGS_KEYS = {
@@ -274,14 +275,21 @@ export class ReaderStoreService {
 
   private readReaderSettings(db: Database): ReaderSettings {
     const rows = this.readScalarMap(db, 'reader_settings');
-    return {
+    return normalizeReaderSettings({
       defaultProviderId: rows.defaultProviderId ?? defaultReaderState.settings.defaultProviderId,
       defaultVoiceId: rows.defaultVoiceId ?? defaultReaderState.settings.defaultVoiceId,
       defaultSpeed: Number(rows.defaultSpeed ?? defaultReaderState.settings.defaultSpeed),
+      ttsMode: (rows.ttsMode as ReaderSettings['ttsMode'] | undefined) ?? defaultReaderState.settings.ttsMode,
+      standardProviderId: rows.standardProviderId ?? defaultReaderState.settings.standardProviderId,
+      standardVoiceId: rows.standardVoiceId ?? defaultReaderState.settings.standardVoiceId,
+      privacyProviderId: rows.privacyProviderId ?? defaultReaderState.settings.privacyProviderId,
+      privacyVoiceId: rows.privacyVoiceId ?? defaultReaderState.settings.privacyVoiceId,
+      characterProviderId: rows.characterProviderId ?? defaultReaderState.settings.characterProviderId,
+      characterVoiceId: rows.characterVoiceId ?? defaultReaderState.settings.characterVoiceId,
       fontSize: Number(rows.fontSize ?? defaultReaderState.settings.fontSize),
       lineHeight: Number(rows.lineHeight ?? defaultReaderState.settings.lineHeight),
       theme: (rows.theme as ReaderSettings['theme'] | undefined) ?? defaultReaderState.settings.theme
-    };
+    });
   }
 
   private replaceReaderSettings(db: Database, settings: ReaderSettings) {

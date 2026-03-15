@@ -8,7 +8,7 @@ export const systemTtsProvider: ModelProvider = {
   category: 'tts',
   kind: 'system',
   configured: isMac,
-  description: isMac ? '使用 macOS say 命令直接朗读。' : '当前主要面向 macOS，其他平台可继续扩展本地朗读实现。'
+  description: isMac ? '轻量本地隐私线路：使用 macOS say 命令直接朗读，不经过云端。' : '当前主要面向 macOS，其他平台可继续扩展本地朗读实现。'
 };
 
 export const systemVoices: VoiceOption[] = [
