@@ -28,6 +28,10 @@
 - 为满足 Step 3 的“清理缓存”要求，当前 renderer 需要补独立的 `clearBookCache(bookId)` IPC/API；现有代码此前只有“删除书籍时顺带清缓存”。
 - `BookDetailPage` 已接入真实书籍数据、阅读进度和章节选择；“继续阅读”通过持久化 `recentBookId + progress` 后跳转阅读页，“从当前章节开始朗读”则直接调用 `api.speak()` 再跳转。
 - 当前 `ReaderPage` 仍由旧 `ReaderShell` 承接，因此详情页最稳妥的过渡方案不是改阅读器参数协议，而是先在详情页内触发朗读，再让阅读页接管状态展示。
+- Step 4 的最佳落点不是继续拆旧 `ReaderShell`，而是新建一条由路由参数驱动的阅读页数据流；这样可以避免与用户当前正在修改的 `ReaderShell.tsx` 直接冲突。
+- 新阅读页已经把设置大卡片、模型控制台和书架删除动作移出视图，只保留正文阅读、章节目录抽屉和播放状态面板，符合执行手册的单一职责要求。
+- 为减少后续 Step 5 重复搬运，已把播放状态摘要、时间线和指标计算提取到 `src/renderer/lib/playback-metrics.ts`，后续全局 Player Dock 可直接复用。
+- 当前阅读页的 TTS 控制仍使用“默认 Provider / 默认音色 / 默认倍速”，配置入口不再在阅读页暴露，需由设置页统一管理。
 
 ## Technical Decisions
 | Decision | Rationale |
@@ -41,6 +45,8 @@
 | 将当前执行点判定为 Step 2，而不是重复实现 Step 1 | 仓库内已有 App Shell 与路由骨架文件，且阅读页已通过 `ReaderPage` 承接旧 `ReaderShell` 过渡 |
 | Step 3 为“独立清缓存”补充新的 preload/main/shared 类型接口 | 这是书籍详情页动作完整性所必需，且不会破坏现有删除书籍流程 |
 | 详情页继续复用 `useLibraryState` 作为过渡数据层，而不立刻新建更重的状态管理 | 当前目标是尽快把章节与主操作迁出全局侧栏，避免过早投入状态重构 |
+| Step 4 新增 `useReaderPageState` 而不是继续向 `useLibraryState` 塞所有播放逻辑 | 阅读页需要自己的滚动位置、播放订阅和章节抽屉状态，独立 hook 更利于 Step 5 继续拆 Dock |
+| 保留 `ReaderShell` 作为旧工作台，不在本步直接改写 | 当前工作树里该文件已有用户改动，避免在阅读页重构时发生无关冲突 |
 
 ## Issues Encountered
 | Issue | Resolution |

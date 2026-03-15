@@ -46,6 +46,23 @@
   - `src/renderer/app/AppShell.tsx` (updated)
   - `src/renderer/styles/app-shell.css` (updated)
 
+### Step 4: 阅读器页重构
+- **Status:** complete
+- Actions taken:
+  - 新增 `src/renderer/hooks/useReaderPageState.ts`，把阅读页的滚动恢复、滚动保存、播放状态订阅和章节抽屉状态从旧 `ReaderShell` 分离出来。
+  - 新增 `src/renderer/components/reader/ReaderContent.tsx`、`src/renderer/components/reader/ReaderChapterDrawer.tsx`、`src/renderer/components/reader/ReaderPlaybackPanel.tsx`，把正文渲染、章节目录和播放状态拆成独立组件。
+  - 重写 `src/renderer/pages/reader/ReaderPage.tsx`，让阅读页由 `/reader/:bookId/:chapterId` 路由参数驱动，不再复用 `ReaderShell`。
+  - 新增 `src/renderer/lib/playback-metrics.ts`，抽出播放状态摘要、时间线和指标计算，作为后续全局播放器 Dock 的复用基础。
+  - 更新 `src/renderer/styles/app-shell.css`，补充沉浸式阅读页、章节抽屉和阅读侧栏样式。
+- Files created/modified:
+  - `src/renderer/hooks/useReaderPageState.ts` (created)
+  - `src/renderer/components/reader/ReaderContent.tsx` (created)
+  - `src/renderer/components/reader/ReaderChapterDrawer.tsx` (created)
+  - `src/renderer/components/reader/ReaderPlaybackPanel.tsx` (created)
+  - `src/renderer/lib/playback-metrics.ts` (created)
+  - `src/renderer/pages/reader/ReaderPage.tsx` (updated)
+  - `src/renderer/styles/app-shell.css` (updated)
+
 ### Phase 1: Requirements & Discovery
 - **Status:** complete
 - **Started:** 2026-03-15
@@ -107,6 +124,8 @@
 | Step 2 lint 检查 | `npm run lint` | 验证前端改动无 lint 错误 | 失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
 | Step 3 类型检查 | `npm run typecheck` | 新增详情页、IPC 与缓存接口编译通过 | 首次因回调签名不匹配失败，修正后通过 | ✓ |
 | Step 3 lint 检查 | `npm run lint` | 验证详情页改动无 lint 错误 | 仍失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
+| Step 4 类型检查 | `npm run typecheck` | 新增阅读页 hook、组件和样式编译通过 | 首次因 `ref` 类型不匹配失败，修正后通过 | ✓ |
+| Step 4 lint 检查 | `npm run lint` | 验证阅读页改动无 lint 错误 | 仍失败：仓库缺少 ESLint v9 所需 `eslint.config.*` | ⚠ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -114,12 +133,13 @@
 | 2026-03-15 | 规划文件不存在 | 1 | 手动新建三份规划文件 |
 | 2026-03-15 | `npm run lint` 失败，提示缺少 `eslint.config.*` | 1 | 记录为仓库现有配置缺口，本步先以 `typecheck` 作为验证 |
 | 2026-03-15 | `LibraryBookCard` 的删除回调类型过窄，导致 Step 3 `typecheck` 失败 | 1 | 将回调签名从 `Promise<void>` 放宽为 `Promise<unknown>`，重新检查通过 |
+| 2026-03-15 | `ReaderContent` 的 `ref` 类型与 `HTMLElement` 不匹配，导致 Step 4 `typecheck` 失败 | 1 | 调整 `useRef` 与组件 `RefObject` 类型，并显式透出当前滚动位置 |
 
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | 已完成 Step 3：书籍详情页重构 |
-| Where am I going? | Step 4：阅读器页重构 |
+| Where am I? | 已完成 Step 4：阅读器页重构 |
+| Where am I going? | Step 5：全局播放器 Dock |
 | What's the goal? | 按执行手册逐步把单体阅读工作台拆成面向 C 端的多层页面结构 |
-| What have I learned? | 在旧 `ReaderShell` 仍承接阅读页的前提下，详情页可以先通过持久化状态和直接触发 `speak()` 完成阅读/朗读入口迁移 |
-| What have I done? | 已完成 Step 2 书库页、Step 3 详情页、独立清缓存接口与类型检查 |
+| What have I learned? | 阅读页最适合由路由参数和独立 hook 驱动；播放指标先下沉到 lib，后续全局 Dock 会更容易接入 |
+| What have I done? | 已完成 Step 2 书库页、Step 3 详情页、Step 4 阅读器页与对应类型检查 |

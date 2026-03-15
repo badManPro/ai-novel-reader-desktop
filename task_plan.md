@@ -4,7 +4,7 @@
 基于当前项目真实代码结构，输出一份面向 C 端产品化的详细改造重构文档，明确“云端 TTS 主朗读、本地模型离线兜底”的产品路线，以及页面层级、信息架构、技术拆分和实施阶段。
 
 ## Current Phase
-Phase 8
+Phase 9
 
 ## Phases
 
@@ -53,9 +53,16 @@ Phase 8
 - **Status:** complete
 
 ### Phase 8: Step 4 Preparation
-- [ ] 进入 Step 4：阅读器页重构
-- [ ] 拆出正文渲染与章节导航的阅读页职责
-- [ ] 将设置与模型控制从阅读页中继续剥离
+- [x] 进入 Step 4：阅读器页重构
+- [x] 拆出正文渲染与章节导航的阅读页职责
+- [x] 将设置与模型控制从阅读页中继续剥离
+- [x] 保留阅读滚动位置保存逻辑
+- **Status:** complete
+
+### Phase 9: Step 5 Preparation
+- [ ] 进入 Step 5：全局播放器 Dock
+- [ ] 将当前阅读页中的播放状态面板抽成跨页面共享层
+- [ ] 统一书库、详情、阅读、设置的播放入口
 - **Status:** pending
 
 ## Key Questions
@@ -81,4 +88,5 @@ Phase 8
 - 当前仓库已包含 App Shell 与基础页面骨架，执行点已从“写文档”切换到“按手册继续实现代码步骤”。
 - Step 2 已完成，当前默认 `/library` 页面已接入真实书架数据与主操作。
 - Step 3 已完成，书籍详情页已接入真实书籍数据、章节选择、继续阅读、开始朗读、删除书籍与独立清缓存。
+- Step 4 已完成，新 `ReaderPage` 已由路由参数驱动，只保留正文、章节抽屉和播放状态，不再复用旧 `ReaderShell`。
 - `npm run lint` 受限于仓库缺少 ESLint v9 flat config，后续如需 lint 需先补配置。
