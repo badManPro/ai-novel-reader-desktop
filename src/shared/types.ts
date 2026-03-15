@@ -464,11 +464,18 @@ export interface DeleteBookResult {
   removedCacheBytes: number;
 }
 
+export interface ClearBookCacheResult {
+  bookId: string;
+  removedEntries: number;
+  removedAudioBytes: number;
+}
+
 export interface NovelReaderApi extends AppMetadata {
   importTxtBook: () => Promise<ImportBookResult | null>;
   loadReaderState: () => Promise<ReaderPersistedState>;
   saveReaderState: (patch: Partial<ReaderPersistedState>) => Promise<ReaderPersistedState>;
   deleteBook: (bookId: string) => Promise<DeleteBookResult>;
+  clearBookCache: (bookId: string) => Promise<ClearBookCacheResult>;
   getTtsProviders: () => Promise<ModelProvider[]>;
   getVoices: (providerId: string) => Promise<VoiceOption[]>;
   getOfflineEngineHealth: () => Promise<OfflineEngineHealth[]>;

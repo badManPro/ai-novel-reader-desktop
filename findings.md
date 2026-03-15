@@ -25,6 +25,9 @@
 - `LibraryPage` 已成功接入真实 `loadReaderState / importTxtBook / deleteBook` 数据流，当前默认首页已经具备最近阅读、导入、删除、详情跳转这四条主路径。
 - 为避免在 Step 2 就改动过大的旧阅读器逻辑，本次新增 `src/renderer/hooks/useLibraryState.ts` 作为过渡数据层，暂不直接拆动 `ReaderShell`。
 - `AppShell` 中原有 “Step 1 Skeleton” 文案已经过时，需要随着每步推进同步更新，否则会误导后续执行人。
+- 为满足 Step 3 的“清理缓存”要求，当前 renderer 需要补独立的 `clearBookCache(bookId)` IPC/API；现有代码此前只有“删除书籍时顺带清缓存”。
+- `BookDetailPage` 已接入真实书籍数据、阅读进度和章节选择；“继续阅读”通过持久化 `recentBookId + progress` 后跳转阅读页，“从当前章节开始朗读”则直接调用 `api.speak()` 再跳转。
+- 当前 `ReaderPage` 仍由旧 `ReaderShell` 承接，因此详情页最稳妥的过渡方案不是改阅读器参数协议，而是先在详情页内触发朗读，再让阅读页接管状态展示。
 
 ## Technical Decisions
 | Decision | Rationale |
@@ -36,6 +39,8 @@
 | 将执行计划细化为 Step 0 到 Step 10 的顺序手册 | 用户要求文档可以按步骤落地执行 |
 | 为每个步骤附带下一步与 git push 模板 | 用户要求每步结束后都能直接推进并提交远程 |
 | 将当前执行点判定为 Step 2，而不是重复实现 Step 1 | 仓库内已有 App Shell 与路由骨架文件，且阅读页已通过 `ReaderPage` 承接旧 `ReaderShell` 过渡 |
+| Step 3 为“独立清缓存”补充新的 preload/main/shared 类型接口 | 这是书籍详情页动作完整性所必需，且不会破坏现有删除书籍流程 |
+| 详情页继续复用 `useLibraryState` 作为过渡数据层，而不立刻新建更重的状态管理 | 当前目标是尽快把章节与主操作迁出全局侧栏，避免过早投入状态重构 |
 
 ## Issues Encountered
 | Issue | Resolution |

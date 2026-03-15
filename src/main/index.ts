@@ -1,6 +1,12 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
-import type { DeleteBookResult, ReaderPersistedState, TtsSpeakRequest, TtsSpeakResult } from '../shared/types';
+import type {
+  ClearBookCacheResult,
+  DeleteBookResult,
+  ReaderPersistedState,
+  TtsSpeakRequest,
+  TtsSpeakResult
+} from '../shared/types';
 import { BookImportService } from './services/book-import-service';
 import { PlaybackDiskCache } from './services/playback-disk-cache';
 import { PlaybackService } from './services/playback-service';
@@ -51,10 +57,20 @@ async function deleteBook(bookId: string): Promise<DeleteBookResult> {
   });
 }
 
+async function clearBookCache(bookId: string): Promise<ClearBookCacheResult> {
+  const cleanup = await playbackDiskCache.removeBook(bookId);
+  return {
+    bookId,
+    removedEntries: cleanup.removedEntries,
+    removedAudioBytes: cleanup.removedAudioBytes
+  };
+
+}
 function registerIpcHandlers() {
   ipcMain.handle('books:import-txt', async () => bookImportService.importTxtBook());
   ipcMain.handle('books:delete', async (_event, bookId: string) => deleteBook(bookId));
   ipcMain.handle('reader-state:load', async () => readerStoreService.loadState());
+  ipcMain.handle('books:clear-cache', async (_event, bookId: string) => clearBookCache(bookId));
   ipcMain.handle('reader-state:save', async (_event, patch: Partial<ReaderPersistedState>) => readerStoreService.saveState(patch));
   ipcMain.handle('tts:list-providers', async () => ttsCatalogService.listProviders());
   ipcMain.handle('tts:list-voices', async (_event, providerId: string) => ttsCatalogService.listVoices(providerId));

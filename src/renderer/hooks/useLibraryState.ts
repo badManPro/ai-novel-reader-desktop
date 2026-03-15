@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Book, DeleteBookResult, NovelReaderApi, ReaderPersistedState } from '../../shared/types';
+import type { Book, ClearBookCacheResult, DeleteBookResult, NovelReaderApi, ReaderPersistedState } from '../../shared/types';
 
 declare global {
   interface Window {
@@ -97,6 +97,17 @@ export function useLibraryState() {
     return nextState;
   }
 
+  async function saveBookProgress(bookId: string, chapterId: string) {
+    const currentState = stateRef.current;
+    return persistPatch({
+      recentBookId: bookId,
+      progress: {
+        ...currentState.progress,
+        [bookId]: chapterId
+      }
+    });
+  }
+
   async function handleImport() {
     if (!api) {
       setImportWarnings(['当前运行环境未注入 novelReader API。']);
@@ -159,7 +170,7 @@ export function useLibraryState() {
   async function handleDeleteBook(targetBook: Book) {
     if (!api) {
       setImportWarnings(['当前运行环境未注入 novelReader API。']);
-      return;
+      return null;
     }
 
     const confirmed = window.confirm([
@@ -169,7 +180,7 @@ export function useLibraryState() {
     ].join('\n'));
 
     if (!confirmed) {
-      return;
+      return null;
     }
 
     setDeletingBookId(targetBook.id);
@@ -179,10 +190,31 @@ export function useLibraryState() {
     try {
       const result = await api.deleteBook(targetBook.id);
       await applyDeletedBookState(result);
+      return result;
     } catch (error) {
       setImportWarnings([error instanceof Error ? error.message : '删除失败，请重试。']);
+      return null;
     } finally {
       setDeletingBookId(null);
+    }
+  }
+
+  async function clearBookCache(bookId: string) {
+    if (!api) {
+      setImportWarnings(['当前运行环境未注入 novelReader API。']);
+      return null;
+    }
+
+    try {
+      const result = await api.clearBookCache(bookId);
+      const message = result.removedEntries > 0
+        ? `已清理 ${result.removedEntries} 条音频缓存（${formatBytes(result.removedAudioBytes)}）。`
+        : '当前书籍没有可清理的音频缓存。';
+      setBookActionMessage(message);
+      return result;
+    } catch (error) {
+      setImportWarnings([error instanceof Error ? error.message : '清理缓存失败，请重试。']);
+      return null;
     }
   }
 
@@ -196,8 +228,11 @@ export function useLibraryState() {
     deletingBookId,
     importWarnings,
     bookActionMessage,
+    clearBookCache,
     handleDeleteBook,
     handleImport,
-    getBookProgressChapter
+    getBookProgressChapter,
+    persistPatch,
+    saveBookProgress
   };
 }

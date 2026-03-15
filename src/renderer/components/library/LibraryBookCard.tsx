@@ -6,7 +6,7 @@ interface LibraryBookCardProps {
   progressChapter: Chapter | null;
   isRecent: boolean;
   isDeleting: boolean;
-  onDelete: (book: Book) => void | Promise<void>;
+  onDelete: (book: Book) => unknown | Promise<unknown>;
 }
 
 function formatBookSize(size?: number) {

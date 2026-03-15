@@ -5,7 +5,7 @@ function getPageMeta(pathname: string) {
     return {
       eyebrow: 'Book Detail',
       title: '书籍详情',
-      description: '承接单本书的章节、进度和主操作，后续在 Step 3 迁移完整书籍工作流。'
+      description: '单本书的章节、进度、继续阅读与朗读操作已经迁移到这里，阅读页后续再进一步收窄职责。'
     };
   }
 

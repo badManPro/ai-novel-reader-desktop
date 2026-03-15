@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
+  ClearBookCacheResult,
   DeleteBookResult,
   ImportBookResult,
   ModelProvider,
@@ -35,6 +36,7 @@ const api: NovelReaderApi = {
   loadReaderState: () => ipcRenderer.invoke('reader-state:load') as Promise<ReaderPersistedState>,
   saveReaderState: (patch) => ipcRenderer.invoke('reader-state:save', patch) as Promise<ReaderPersistedState>,
   deleteBook: (bookId: string) => ipcRenderer.invoke('books:delete', bookId) as Promise<DeleteBookResult>,
+  clearBookCache: (bookId: string) => ipcRenderer.invoke('books:clear-cache', bookId) as Promise<ClearBookCacheResult>,
   getTtsProviders: () => ipcRenderer.invoke('tts:list-providers') as Promise<ModelProvider[]>,
   getVoices: (providerId: string) => ipcRenderer.invoke('tts:list-voices', providerId) as Promise<VoiceOption[]>,
   getOfflineEngineHealth: () => ipcRenderer.invoke('tts:offline-health') as Promise<OfflineEngineHealth[]>,
